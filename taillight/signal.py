@@ -56,13 +56,15 @@ class Signal:
 
     By default, the slots are ordered by lowest priority first (0, 1, 2...).
     This is in line with the Unix style of priorities, and is rather intuitive
-    from the programming perspective. Another mode is possible, where higher
-    priority slots are run first.
+    from the programming perspective. When ``prio_descend`` is set to
+    ``False``, higher priority slots are run first.
 
     When two slots have the same priority, their UID (computed at the time the
-    slot is added) is used. This follows the same ordering as described.
+    slot is created) is used. The ordering follows the behaviour as described
+    above with priorities.
 
-    No two slots within a Signal instance can share the same UID.
+    No two slots within a Signal instance can share the same UID. Forcing two
+    slots to share a UID will result in undefined behaviour.
 
     Slots should not be transferred to other signals; instead, create another
     slot separately.
@@ -100,7 +102,7 @@ class Signal:
 
         self.slots = list()
 
-    def find(self, function):
+    def find_function(self, function):
         """Find the given :py:class::`~taillight.slot.Slot` instance(s), given
         a function.
 
@@ -118,8 +120,9 @@ class Signal:
 
         if ret:
             return ret
-
-        raise SlotNotFoundError("Slot not found: {}".format(repr(function)))
+        else:
+            raise SlotNotFoundError("Slot not found: {}".format(
+                repr(function)))
 
     def find_uid(self, uid):
         """Find the given :py:class::`~taillight.slot.Slot` instance(s), given
@@ -138,7 +141,7 @@ class Signal:
 
         raise SlotNotFoundError("Signal UID not found: {}".format(uid))
 
-    def add(self, function, args=(), kwargs={}):
+    def add(self, function):
         """Add a given slot function to the signal with unspecified priority.
 
         ..note::
@@ -148,35 +151,21 @@ class Signal:
         :param function:
             The given function to add to the slot.
 
-        :param args:
-            The arguments to pass to the function when the slot is called.
-
-        :param kwargs:
-            The keyword arguments to pass to the function when the slot is
-            called.
-
         :returns:
             A :py:class::`~taillight.slot.Slot` object that can be used to
             delete the slot later.
         """
-        return self.add_priority(0, function, args, kwargs)
+        return self.add_priority(0, function)
 
-    def add_priority(self, priority, function, args=(), kwargs={}):
+    def add_priority(self, priority, function):
         """Add a given slot function to the signal with a given priority.
 
         :param priority:
             Priority of the slot, which determines its call order.
-        
+
         :param function:
             The given function to add to the slot.
 
-        :param args:
-            The arguments to pass to the function when the slot is called.
-
-        :param kwargs:
-            The keyword arguments to pass to the function when the slot is
-            called.
-        
         :returns:
             A :py:class::`~taillight.slot.Slot` object that can be used to
             delete the slot later.
@@ -185,7 +174,7 @@ class Signal:
             uid = self._uid
             self._uid += 1
 
-        s = Slot(priority, uid, function, args, kwargs)
+        s = Slot(priority, uid, function)
 
         with self._slots_lock:
             if self._defer is not None:
@@ -242,15 +231,35 @@ class Signal:
             # Requires lock to avoid racing with call
             self._defer = None
 
-    def call(self, reset=False):
-        """Call the signal, running all the slots.
+    def reset_call(self, *args, **kwargs):
+        """Call the signal, running all the slots, but reset the deferred
+        status before running the functions.
+
+        All arguments and keywords are passed to the slots when run.
+
+        This is needed in threaded programs to avoid race conditions when
+        calling reset_defer then call sequentially without some other form of
+        locking outside taillight.
 
         Exceptions are propagated to the caller, except for
         :py:class::`~taillight.signal.SignalStop` and
         :py:class::`~taillight.signal.SignalDefer`.
 
-        :param reset:
-            Reset the deferred status before running the functions.
+        :returns:
+            A list of return values from the callbacks.
+        """
+        with self._slots_lock:
+            self.reset_defer()
+            return self.call(*args, **kwargs)
+
+    def call(self, *args, **kwargs):
+        """Call the signal, running all the slots.
+
+        All arguments and keywords are passed to the slots when run.
+
+        Exceptions are propagated to the caller, except for
+        :py:class::`~taillight.signal.SignalStop` and
+        :py:class::`~taillight.signal.SignalDefer`.
 
         :returns:
             A list of return values from the callbacks.
@@ -258,14 +267,14 @@ class Signal:
         ret = []
 
         with self._slots_lock:
-            if reset:
-                self.reset_defer()
-
-            slots = iter(self.slots) if self._defer is None else self._defer
+            if self.defer is None:
+                slots = iter(self.slots)
+            else:
+                slots = self._defer
 
             for slot in slots:
                 try:
-                    ret.append(slot.function(*slot.args, **slot.kwargs))
+                    ret.append(slot.function(*args, **kwargs))
                 except SignalStop as e:
                     self.reset_defer()
                     return ret

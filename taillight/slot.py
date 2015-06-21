@@ -15,7 +15,7 @@ class SlotNotFoundError(SlotError):
     """Raised when a given slot is not found."""
 
 
-Slot = namedtuple("Slot", "priority uid function args kwargs")
+Slot = namedtuple("Slot", "priority uid function")
 """The slot object used by the library.
 
 :ivar priority:
@@ -27,10 +27,4 @@ Slot = namedtuple("Slot", "priority uid function args kwargs")
 
 :ivar function:
     Function called when the signal is run.
-
-:ivar args:
-    Arguments function is called with when the signal is run.
-
-:ivar kwargs:
-    Keyword arguments function is called with when the signal is run.
 """
