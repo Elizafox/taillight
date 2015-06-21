@@ -5,7 +5,6 @@
 from bisect import insort_left, insort_right
 from collections.abc import Iterable
 from threading import Lock, RLock
-from weakref import proxy
 
 from taillight import TaillightException
 from taillight.slot import Slot, SlotNotFoundError
@@ -71,6 +70,10 @@ class Signal:
 
     This class is thread-safe and all operations may be performed by multiple
     threads at once.
+
+    By default, when a function associated with a slot becomes garbage
+    collected, it will be removed from the slots. The functions are kept
+    as weak references.
     """
 
     # lol
