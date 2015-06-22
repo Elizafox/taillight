@@ -161,7 +161,7 @@ class Signal:
             A :py:class::`~taillight.slot.Slot` object that can be used to
             delete the slot later.
         """
-        return self.add_priority(0, function, sender)
+        return self.add_priority(0, function, listener)
 
     def add_priority(self, priority, function, listener=ANY):
         """Add a given slot function to the signal with a given priority.
