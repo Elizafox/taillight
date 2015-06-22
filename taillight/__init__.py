@@ -3,13 +3,13 @@
 # directory for licensing information.
 
 
-# Important aliases
-from taillight.signal import Signal
-from taillight.slot import Slot
-
-
 __all__ = ["signal", "slot"]
 
 
 class TaillightException(Exception):
     """The base class for all taillight exceptions."""
+
+
+# Important aliases
+from taillight.signal import Signal
+from taillight.slot import Slot

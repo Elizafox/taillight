@@ -255,7 +255,7 @@ class Signal:
             self.reset_defer()
             return self.call(*args, **kwargs)
 
-    def call(self, *args, **kwargs):
+    def call(self, caller, *args, **kwargs):
         """Call the signal, running all the slots.
 
         All arguments and keywords are passed to the slots when run.
@@ -263,6 +263,9 @@ class Signal:
         Exceptions are propagated to the caller, except for
         :py:class::`~taillight.signal.SignalStop` and
         :py:class::`~taillight.signal.SignalDefer`.
+
+        :param caller:
+            The caller of this slot.
 
         :returns:
             A list of return values from the callbacks.
@@ -277,7 +280,7 @@ class Signal:
 
             for slot in slots:
                 try:
-                    ret.append(slot.function(*args, **kwargs))
+                    ret.append(slot.function(caller, *args, **kwargs))
                 except SignalStop as e:
                     self.reset_defer()
                     return ret
