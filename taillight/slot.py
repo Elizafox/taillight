@@ -18,7 +18,7 @@ class SlotNotFoundError(SlotError):
 class Slot:
     """A slot in a given signal. This is also callable."""
 
-    def __init__(self, priority, uid, function):
+    def __init__(self, priority, uid, function, listener):
         """Initalise the Slot object
 
         :param priority:
@@ -30,11 +30,14 @@ class Slot:
 
         :param function:
             Function called when the signal is run.
-        """
 
+        :param listener:
+            The listener this object listens on.
+        """
         self.priority = priority
         self.uid = uid
         self.function = function
+        self.listener = listener
 
         update_wrapper(self, function)
 
@@ -42,8 +45,8 @@ class Slot:
         return self.function(caller, *args, **kwargs)
 
     def __repr__(self):
-        return "Slot(priority={}, uid={}, function={})".format(
-            self.priority, self.uid, self.function)
+        return "Slot(priority={}, uid={}, function={}, listener={})".format(
+            self.priority, self.uid, self.function, self.listener)
 
     def __lt__(self, other):
         return (self.priority, self.uid) < (other.priority, other.uid)

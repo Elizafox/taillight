@@ -13,3 +13,17 @@ class TaillightException(Exception):
 # Important aliases
 from taillight.signal import Signal
 from taillight.slot import Slot
+
+
+class _AnyObject:
+    __slots__ = []
+
+    def __eq__(self, _):
+        return True
+
+    def __ne__(self, _):
+        return False
+
+
+ANY = _AnyObject()
+"""The predicate for signalling any slot"""

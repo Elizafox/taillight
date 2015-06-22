@@ -6,7 +6,7 @@ from bisect import insort_left, insort_right
 from collections.abc import Iterable
 from threading import Lock, RLock
 
-from taillight import TaillightException
+from taillight import ANY, TaillightException
 from taillight.slot import Slot, SlotNotFoundError
 
 
@@ -144,7 +144,7 @@ class Signal:
 
         raise SlotNotFoundError("Signal UID not found: {}".format(uid))
 
-    def add(self, function):
+    def add(self, function, sender=ANY):
         """Add a given slot function to the signal with unspecified priority.
 
         ..note::
@@ -154,13 +154,16 @@ class Signal:
         :param function:
             The given function to add to the slot.
 
+        :param sender:
+            The sender this slot listens for.
+
         :returns:
             A :py:class::`~taillight.slot.Slot` object that can be used to
             delete the slot later.
         """
         return self.add_priority(0, function)
 
-    def add_priority(self, priority, function):
+    def add_priority(self, priority, function, sender=ANY):
         """Add a given slot function to the signal with a given priority.
 
         :param priority:
@@ -168,6 +171,9 @@ class Signal:
 
         :param function:
             The given function to add to the slot.
+
+        :param sender:
+            The sender this slot listens for.
 
         :returns:
             A :py:class::`~taillight.slot.Slot` object that can be used to
@@ -234,7 +240,7 @@ class Signal:
             # Requires lock to avoid racing with call
             self._defer = None
 
-    def reset_call(self, *args, **kwargs):
+    def reset_call(self, sender, *args, **kwargs):
         """Call the signal, running all the slots, but reset the deferred
         status before running the functions.
 
@@ -248,15 +254,18 @@ class Signal:
         :py:class::`~taillight.signal.SignalStop` and
         :py:class::`~taillight.signal.SignalDefer`.
 
+        :param sender:
+            The sender on this slot.
+
         :returns:
             A list of return values from the callbacks.
         """
         with self._slots_lock:
             self.reset_defer()
-            return self.call(*args, **kwargs)
+            return self.call(sender, *args, **kwargs)
 
-    def call(self, caller, *args, **kwargs):
-        """Call the signal, running all the slots.
+    def call(self, sender, *args, **kwargs):
+        """Call the signal.
 
         All arguments and keywords are passed to the slots when run.
 
@@ -264,8 +273,8 @@ class Signal:
         :py:class::`~taillight.signal.SignalStop` and
         :py:class::`~taillight.signal.SignalDefer`.
 
-        :param caller:
-            The caller of this slot.
+        :param sender:
+            The sender on this slot.
 
         :returns:
             A list of return values from the callbacks.
@@ -279,14 +288,16 @@ class Signal:
                 slots = self._defer
 
             for slot in slots:
-                try:
-                    ret.append(slot.function(caller, *args, **kwargs))
-                except SignalStop as e:
-                    self.reset_defer()
-                    return ret
-                except SignalDefer as e:
-                    self._defer = slots
-                    return ret
+                if slot.sender is ANY or slot.listener == slot.sender:
+                    # Run the slot
+                    try:
+                        ret.append(slot(sender, *args, **kwargs))
+                    except SignalStop as e:
+                        self.reset_defer()
+                        return ret
+                    except SignalDefer as e:
+                        self._defer = slots
+                        return ret
 
             self.reset_defer()
 
