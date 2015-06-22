@@ -32,6 +32,10 @@ class SignalDeferralSetError(SignalException):
     set."""
 
 
+_sigcreate_lock = Lock()  # Locking for the below dict
+_signals = {}
+
+
 class Signal:
     """A signal is an object that keeps a list of functions for calling later.
 
@@ -79,6 +83,15 @@ class Signal:
     # lol
     __slots__ = ["name", "_slots_lock", "_uid", "_uid_lock", "_defer",
                  "prio_descend", "slots"]
+
+    def __new__(cls, name=None):
+        with _sigcreate_lock:
+            if name is None:
+                return super().__new__(cls)
+            elif name not in _signals:
+                _signals[name] = super().__new__(cls)
+
+            return _signals[name]
 
     def __init__(self, name=None, prio_descend=True):
         """Create the Signal object.
