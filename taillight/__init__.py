@@ -10,11 +10,6 @@ class TaillightException(Exception):
     """The base class for all taillight exceptions."""
 
 
-# Important aliases
-from taillight.signal import Signal
-from taillight.slot import Slot
-
-
 class _AnyObject:
     __slots__ = []
 
@@ -27,3 +22,8 @@ class _AnyObject:
 
 ANY = _AnyObject()
 """The predicate for signalling any slot"""
+
+
+# Important aliases
+from taillight.signal import Signal
+from taillight.slot import Slot
