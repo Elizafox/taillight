@@ -5,7 +5,7 @@
 from bisect import insort_left, insort_right
 from collections.abc import Iterable
 from threading import Lock, RLock
-from weakref import WeakValueDictionary
+from weakref import WeakValueDictionary, finalize
 
 from taillight import ANY, TaillightException
 from taillight.slot import Slot, SlotNotFoundError
@@ -77,10 +77,6 @@ class Signal:
     as weak references.
     """
 
-    # lol
-    __slots__ = ["name", "_slots_lock", "_uid", "_uid_lock", "_defer",
-                 "prio_descend", "slots"]
-
     _sigcreate_lock = Lock()  # Locking for the below dict
     _signals = WeakValueDictionary()
 
@@ -88,10 +84,12 @@ class Signal:
         with Signal._sigcreate_lock:
             if name is None:
                 return super().__new__(cls)
-            elif name not in Signal._signals:
-                Signal._signals[name] = super().__new__(cls)
 
-            return Signal._signals[name]
+            signal = Signal._signals.get(name, None)
+            if signal is None:
+                signal = Signal._signals[name] = super().__new__(cls)
+
+            return signal
 
     def __init__(self, name=None, prio_descend=True):
         """Create the Signal object.
@@ -174,9 +172,9 @@ class Signal:
             A :py:class::`~taillight.slot.Slot` object that can be used to
             delete the slot later.
         """
-        return self.add_priority(0, function, listener)
+        return self.add_priority(function, 0, listener)
 
-    def add_priority(self, priority, function, listener=ANY):
+    def add_priority(self, function, priority, listener=ANY):
         """Add a given slot function to the signal with a given priority.
 
         :param priority:
