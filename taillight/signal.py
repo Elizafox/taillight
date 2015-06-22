@@ -80,7 +80,7 @@ class Signal:
     __slots__ = ["name", "_slots_lock", "_uid", "_uid_lock", "_defer",
                  "prio_descend", "slots"]
 
-    def __init__(self, name, prio_descend=True):
+    def __init__(self, name=None, prio_descend=True):
         """Create the Signal object.
 
         :param name:
