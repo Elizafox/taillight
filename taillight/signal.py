@@ -33,14 +33,6 @@ class SignalDeferralSetError(SignalException):
     set."""
 
 
-_sigcreate_lock = Lock()  # Locking for the below dict
-_signals = WeakValueDictionary()
-
-
-def _signal_cleanup(name):
-    _signals.pop(name, None)
-
-
 class Signal:
     """A signal is an object that keeps a list of functions for calling later.
 
@@ -89,14 +81,17 @@ class Signal:
     __slots__ = ["name", "_slots_lock", "_uid", "_uid_lock", "_defer",
                  "prio_descend", "slots"]
 
+    _sigcreate_lock = Lock()  # Locking for the below dict
+    _signals = WeakValueDictionary()
+
     def __new__(cls, name=None):
-        with _sigcreate_lock:
+        with Signal._sigcreate_lock:
             if name is None:
                 return super().__new__(cls)
-            elif name not in _signals:
-                _signals[name] = super().__new__(cls)
+            elif name not in Signal._signals:
+                Signal._signals[name] = super().__new__(cls)
 
-            return _signals[name]
+            return Signal._signals[name]
 
     def __init__(self, name=None, prio_descend=True):
         """Create the Signal object.
