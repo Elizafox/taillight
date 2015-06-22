@@ -282,13 +282,13 @@ class Signal:
         ret = []
 
         with self._slots_lock:
-            if self.defer is None:
+            if self._defer is None:
                 slots = iter(self.slots)
             else:
                 slots = self._defer
 
             for slot in slots:
-                if slot.sender is ANY or slot.listener == slot.sender:
+                if slot.listener is ANY or sender == slot.listener:
                     # Run the slot
                     try:
                         ret.append(slot(sender, *args, **kwargs))
