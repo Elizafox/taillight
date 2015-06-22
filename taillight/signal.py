@@ -144,7 +144,7 @@ class Signal:
 
         raise SlotNotFoundError("Signal UID not found: {}".format(uid))
 
-    def add(self, function, sender=ANY):
+    def add(self, function, listener=ANY):
         """Add a given slot function to the signal with unspecified priority.
 
         ..note::
@@ -154,16 +154,16 @@ class Signal:
         :param function:
             The given function to add to the slot.
 
-        :param sender:
+        :param listener:
             The sender this slot listens for.
 
         :returns:
             A :py:class::`~taillight.slot.Slot` object that can be used to
             delete the slot later.
         """
-        return self.add_priority(0, function)
+        return self.add_priority(function, priority, sender)
 
-    def add_priority(self, priority, function, sender=ANY):
+    def add_priority(self, priority, function, listener=ANY):
         """Add a given slot function to the signal with a given priority.
 
         :param priority:
@@ -172,7 +172,7 @@ class Signal:
         :param function:
             The given function to add to the slot.
 
-        :param sender:
+        :param listener:
             The sender this slot listens for.
 
         :returns:
@@ -183,7 +183,7 @@ class Signal:
             uid = self._uid
             self._uid += 1
 
-        s = Slot(priority, uid, function)
+        s = Slot(priority, uid, function, listener)
 
         with self._slots_lock:
             if self._defer is not None:
