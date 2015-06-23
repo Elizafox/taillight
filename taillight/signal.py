@@ -5,7 +5,7 @@
 from bisect import insort_left, insort_right
 from collections.abc import Iterable
 from threading import Lock, RLock
-from weakref import WeakValueDictionary, finalize
+from weakref import WeakValueDictionary
 
 from taillight import ANY, TaillightException
 from taillight.slot import Slot, SlotNotFoundError
