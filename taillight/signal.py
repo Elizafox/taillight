@@ -4,6 +4,7 @@
 
 from bisect import insort_left, insort_right
 from collections.abc import Iterable
+from functools import wraps
 from threading import Lock, RLock
 from weakref import WeakValueDictionary
 
@@ -80,7 +81,7 @@ class Signal:
     _sigcreate_lock = Lock()  # Locking for the below dict
     _signals = WeakValueDictionary()
 
-    def __new__(cls, name=None):
+    def __new__(cls, name=None, prio_descend=True):
         with Signal._sigcreate_lock:
             if name is None:
                 return super().__new__(cls)
@@ -177,11 +178,11 @@ class Signal:
     def add_priority(self, function, priority, listener=ANY):
         """Add a given slot function to the signal with a given priority.
 
-        :param priority:
-            Priority of the slot, which determines its call order.
-
         :param function:
             The given function to add to the slot.
+
+        :param priority:
+            Priority of the slot, which determines its call order.
 
         :param listener:
             The sender this slot listens for.
@@ -208,6 +209,25 @@ class Signal:
                 insort_left(self.slots, s)
 
         return s
+
+    def add_decorate(self, priority, listener=ANY):
+        """Similar to :py:meth::`~taillight.signal.Signal.add_priority`, but
+        is for use as a decorator.
+
+        :param priority:
+            Priority of the slot, which determines its call order.
+
+        :param listener:
+            The sender this slot listens for.
+
+        :returns:
+            A :py:class::`~taillight.slot.Slot` object that can be used to
+            delete the slot later.
+        """
+        def decorator(function):
+            return self.add_priority(function, priority, listener)
+
+        return decorator
 
     def delete(self, slot):
         """Delete a slot from the signal.
