@@ -4,8 +4,9 @@
 
 from bisect import insort_left, insort_right
 from collections.abc import Iterable
+from functools import partial
 from threading import Lock, RLock
-from weakref import WeakValueDictionary, finalize
+from weakref import WeakValueDictionary, proxy
 
 from taillight import ANY, TaillightException
 from taillight.slot import Slot, SlotNotFoundError
@@ -91,7 +92,7 @@ class Signal:
 
             return signal
 
-    def __init__(self, name=None, prio_descend=True):
+    def __init__(self, name=None, prio_descend=True, use_weakrefs=True):
         """Create the Signal object.
 
         :param name:
@@ -102,6 +103,11 @@ class Signal:
             Determines the behaviour of slot list insertion. By default, slots
             with lower priority values are run first. This may be changed by
             setting prio_descend to ``False``.
+
+        :param use_weakrefs:
+            Whether or not to use weak references in slot functions. When the
+            function is garbage collected elsewhere, it will be removed from
+            the signal.
         """
         self.name = name
 
@@ -113,6 +119,8 @@ class Signal:
         self._defer = None  # Used in deferral
 
         self.prio_descend = prio_descend
+
+        self.use_weakrefs = use_weakrefs
 
         self.slots = list()
 
@@ -193,6 +201,12 @@ class Signal:
         with self._uid_lock:
             uid = self._uid
             self._uid += 1
+
+        if self.use_weakrefs:
+            # This may look problematic at first glance (what happens if we
+            # die?) but it's actually fine, because if self dies, so does the
+            # slot (and thus the proxy), so it will never be called.
+            function = proxy(function, partial(self.delete_uid, uid))
 
         s = Slot(priority, uid, function, listener)
 
@@ -313,10 +327,14 @@ class Signal:
                     # Run the slot
                     try:
                         ret.append(slot(sender, *args, **kwargs))
-                    except SignalStop as e:
-                        self.reset_defer()
-                        return ret
-                    except SignalDefer as e:
+                    except ReferenceError:
+                        # Pythons besides CPython (PyPy, Jython, IronPython,
+                        # etc.) might raise this with proxies due to the way
+                        # their GC's work, so be defensive.
+                        pass
+                    except SignalStop:
+                        break
+                    except SignalDefer:
                         self._defer = slots
                         return ret
 
