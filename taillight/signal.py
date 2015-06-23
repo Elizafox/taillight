@@ -242,7 +242,17 @@ class Signal:
             The uid of the :py:class::`~taillight.slot.Slot` object to delete.
         """
         with self._slots_lock:
-            self.delete(self.find_uid(uid))
+            if self._defer is not None:
+                # Requires lock to avoid racing with call
+                raise SignalDeferralSetError("Cannot delete due to deferral "
+                                             "point being set")
+
+            for i, slot in enumerate(self.slots):
+                if uid == slot.uid:
+                    del slot[i]
+                    return
+
+        raise SlotNotFoundError("Signal UID not found: {}".format(uid))
 
     def reset_defer(self):
         """Reset the deferred status of the signal, causing the deferred point
