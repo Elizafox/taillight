@@ -210,9 +210,12 @@ class Signal:
 
         return s
 
-    def add_decorate(self, priority, listener=ANY):
+    def decorate(self, priority, listener=ANY):
         """Similar to :py:meth::`~taillight.signal.Signal.add_priority`, but
         is for use as a decorator.
+
+        Use this when :py:meth:`~tailight.signal.Signal.add` is not sufficient
+        as a decorator (e.g. you need to set the args).
 
         :param priority:
             Priority of the slot, which determines its call order.
