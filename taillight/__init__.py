@@ -19,6 +19,10 @@ class _AnyObject:
     def __ne__(self, _):
         return False
 
+    def __hash__(self):
+        # Supposed to be a singleton, so this is fine.
+        return id(ANY)
+
 
 ANY = _AnyObject()
 """The predicate for signalling any slot"""
