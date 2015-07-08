@@ -210,7 +210,7 @@ class Signal:
 
         return s
 
-    def decorate(self, priority, listener=ANY):
+    def add_wraps(self, priority, listener=ANY):
         """Similar to :py:meth::`~taillight.signal.Signal.add_priority`, but
         is for use as a decorator.
 
