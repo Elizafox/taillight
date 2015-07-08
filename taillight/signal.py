@@ -156,7 +156,7 @@ class Signal:
 
         raise SlotNotFoundError("Signal UID not found: {}".format(uid))
 
-    def add(self, function, priority, listener=ANY):
+    def add(self, function, priority=0, listener=ANY):
         """Add a given slot function to the signal with a given priority.
 
         :param function:
@@ -191,7 +191,7 @@ class Signal:
 
         return s
 
-    def add_wraps(self, priority, listener=ANY):
+    def add_wraps(self, priority=0, listener=ANY):
         """Similar to :py:meth::`~taillight.signal.Signal.add`, but
         is for use as a decorator.
 

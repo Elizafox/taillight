@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(name="taillight",
       version="0.1a1",
-      description="An implementation of signals and slots, with priorities.",
+      description="An implementation of sigs and slots, with priorities.",
       author="Elizabeth Myers",
       author_email="elizabeth@interlinked.me",
       url="<none yet>",
