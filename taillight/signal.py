@@ -256,7 +256,7 @@ class Signal:
 
             for i, slot in enumerate(self.slots):
                 if uid == slot.uid:
-                    del self.slotsi]
+                    del self.slots[i]
                     return
 
         raise SlotNotFoundError("Signal UID not found: {}".format(uid))
