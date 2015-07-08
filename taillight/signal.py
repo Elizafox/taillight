@@ -131,7 +131,7 @@ class Signal:
         with self._slots_lock:
             for slot in self.slots:
                 if slot.function is function:
-                    ret.append(function)
+                    ret.append(slot)
 
         if ret:
             return ret
