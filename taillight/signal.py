@@ -156,26 +156,7 @@ class Signal:
 
         raise SlotNotFoundError("Signal UID not found: {}".format(uid))
 
-    def add(self, function, listener=ANY):
-        """Add a given slot function to the signal with unspecified priority.
-
-        ..note::
-            This is an exact equivalent to (and wrapper for)
-            :py:meth::`~taillight.signal.Signal.add_priority`(0, ...)
-
-        :param function:
-            The given function to add to the slot.
-
-        :param listener:
-            The sender this slot listens for.
-
-        :returns:
-            A :py:class::`~taillight.slot.Slot` object that can be used to
-            delete the slot later.
-        """
-        return self.add_priority(function, 0, listener)
-
-    def add_priority(self, function, priority, listener=ANY):
+    def add(self, function, priority, listener=ANY):
         """Add a given slot function to the signal with a given priority.
 
         :param function:
@@ -211,7 +192,7 @@ class Signal:
         return s
 
     def add_wraps(self, priority, listener=ANY):
-        """Similar to :py:meth::`~taillight.signal.Signal.add_priority`, but
+        """Similar to :py:meth::`~taillight.signal.Signal.add`, but
         is for use as a decorator.
 
         Use this when :py:meth:`~tailight.signal.Signal.add` is not sufficient
@@ -228,7 +209,7 @@ class Signal:
             delete the slot later.
         """
         def decorator(function):
-            return self.add_priority(function, priority, listener)
+            return self.add(function, priority, listener)
 
         return decorator
 
