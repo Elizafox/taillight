@@ -156,6 +156,9 @@ class Signal:
 
         raise SlotNotFoundError("Signal UID not found: {}".format(uid))
 
+    def __contains__(self, slot):
+        return slot in self.slots
+
     def add(self, function, priority=0, listener=ANY):
         """Add a given slot function to the signal with a given priority.
 
@@ -253,7 +256,7 @@ class Signal:
 
             for i, slot in enumerate(self.slots):
                 if uid == slot.uid:
-                    del slot[i]
+                    del self.slotsi]
                     return
 
         raise SlotNotFoundError("Signal UID not found: {}".format(uid))
