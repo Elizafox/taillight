@@ -4,7 +4,6 @@
 
 from bisect import insort_left, insort_right
 from collections.abc import Iterable
-from functools import wraps
 from threading import Lock, RLock
 from weakref import WeakValueDictionary
 
@@ -159,11 +158,12 @@ class Signal:
     def __contains__(self, slot):
         return slot in self.slots
 
-    def add(self, function, priority=0, listener=ANY):
+    def add(self, function=None, priority=0, listener=ANY):
         """Add a given slot function to the signal with a given priority.
 
         :param function:
-            The given function to add to the slot.
+            The given function to add to the slot. If set to None, this will
+            be treated as a decorator.
 
         :param priority:
             Priority of the slot, which determines its call order.
@@ -175,6 +175,9 @@ class Signal:
             A :py:class::`~taillight.slot.Slot` object that can be used to
             delete the slot later.
         """
+        if function is None:
+            return self.add_wraps(priority, listener)
+
         with self._uid_lock:
             uid = self._uid
             self._uid += 1
