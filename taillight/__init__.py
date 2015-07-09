@@ -3,7 +3,10 @@
 # directory for licensing information.
 
 
-"""Several constants are defined here."""
+"""The top level module contains a few constants needed throughout taillight,
+the base exception for all taillight errors (for easier catching by handlers),
+and aliases for two important classes: :py:class:`~taillight.signal.Signal`,
+and :py:class:`~taillight.slot.Slot`."""
 
 
 __all__ = ["signal", "slot"]
@@ -28,7 +31,7 @@ class _AnyObject:
 
 
 ANY = _AnyObject()
-"""The predicate for signalling any slot"""
+"""The predicate for signalling any slot."""
 
 
 # Important aliases
