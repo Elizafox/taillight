@@ -49,14 +49,14 @@ class Signal:
     This is conceptually similar to the concept of signals and slots, but with
     greater emphasis on priorities and having a well-defined order that the
     slots are called with. In addition, execution of slots may be stopped by
-    raising :py:class::`~taillight.signal.SignalStop`, and deferred by raising
-    :py:class::`~taillight.signal.SignalDefer`, where the signal will resume
+    raising :py:class:`~taillight.signal.SignalStop`, and deferred by raising
+    :py:class:`~taillight.signal.SignalDefer`, where the signal will resume
     calling where it left off.
 
     When the signal is in a deferred state, adding or deleting slots is not
     allowed, as this would lead to inconsistencies in how the new slots should
     be called and how the deleted slots should be handled. However, a simple
-    call to :py:meth::`~taillight.signal.Signal.reset_defer` resets the
+    call to :py:meth:`~taillight.signal.Signal.reset_defer` resets the
     signal.
 
     By default, the slots are ordered by lowest priority first (0, 1, 2...).
@@ -124,14 +124,14 @@ class Signal:
         self.slots = list()
 
     def find_function(self, function):
-        """Find the given :py:class::`~taillight.slot.Slot` instance(s), given
+        """Find the given :py:class:`~taillight.slot.Slot` instance(s), given
         a function.
 
         Since a function may be registered multiple times, this function
         returns a list of functions found.
 
         If a slot with the given function is not found, then a
-        :py:class::`~taillight.slot.SlotNotFoundError` is raised.
+        :py:class:`~taillight.slot.SlotNotFoundError` is raised.
         """
         ret = []
         with self._slots_lock:
@@ -146,14 +146,14 @@ class Signal:
                 repr(function)))
 
     def find_uid(self, uid):
-        """Find the given :py:class::`~taillight.slot.Slot` instance(s), given
+        """Find the given :py:class:`~taillight.slot.Slot` instance(s), given
         a uid.
 
         Since only one :py:class:`~taillight.slot.Slot` can exist at one time
         with the given UID, only one slot is returned.
 
         If a slot with the given UID is not found, then a
-        :py:class::`~taillight.slot.SlotNotFoundError` is raised.
+        :py:class:`~taillight.slot.SlotNotFoundError` is raised.
         """
         with self._slots_lock:
             for slot in self.slots:
@@ -163,13 +163,13 @@ class Signal:
         raise SlotNotFoundError("Signal UID not found: {}".format(uid))
 
     def find_listener(self, listener):
-        """Find the given :py:class::`~taillight.slot.Slot` instance(s) that
+        """Find the given :py:class:`~taillight.slot.Slot` instance(s) that
         are listening on the given listener.
 
         This returns a list of slots.
         
         If a slot with the given function is not found, then a
-        :py:class::`~taillight.slot.SlotNotFoundError` is raised.
+        :py:class:`~taillight.slot.SlotNotFoundError` is raised.
         """
         ret = []
         with self._slots_lock:
@@ -200,7 +200,7 @@ class Signal:
             The sender this slot listens for.
 
         :returns:
-            A :py:class::`~taillight.slot.Slot` object that can be used to
+            A :py:class:`~taillight.slot.Slot` object that can be used to
             delete the slot later.
 
         """
@@ -240,7 +240,7 @@ class Signal:
             The sender this slot listens for.
 
         :returns:
-            A :py:class::`~taillight.slot.Slot` object that can be used to
+            A :py:class:`~taillight.slot.Slot` object that can be used to
             delete the slot later.
         """
         def decorator(function):
@@ -252,7 +252,7 @@ class Signal:
         """Delete a slot from the signal.
 
         :param slot:
-            The :py:class::`~taillight.slot.Slot` object to delete.
+            The :py:class:`~taillight.slot.Slot` object to delete.
 
         """
         with self._slots_lock:
@@ -279,7 +279,7 @@ class Signal:
         """Delete the slot with the given UID from the signal.
 
         :param uid:
-            The uid of the :py:class::`~taillight.slot.Slot` object to delete.
+            The uid of the :py:class:`~taillight.slot.Slot` object to delete.
 
         """
         with self._slots_lock:
@@ -313,8 +313,8 @@ class Signal:
         locking outside taillight.
 
         Exceptions are propagated to the caller, except for
-        :py:class::`~taillight.signal.SignalStop` and
-        :py:class::`~taillight.signal.SignalDefer`.
+        :py:class:`~taillight.signal.SignalStop` and
+        :py:class:`~taillight.signal.SignalDefer`.
 
         :param sender:
             The sender on this slot.
@@ -333,8 +333,8 @@ class Signal:
         All arguments and keywords are passed to the slots when run.
 
         Exceptions are propagated to the caller, except for
-        :py:class::`~taillight.signal.SignalStop` and
-        :py:class::`~taillight.signal.SignalDefer`.
+        :py:class:`~taillight.signal.SignalStop` and
+        :py:class:`~taillight.signal.SignalDefer`.
 
         :param sender:
             The sender on this slot.
