@@ -228,7 +228,7 @@ class Signal:
         return s
 
     def add_wraps(self, priority=0, listener=ANY):
-        """Similar to :py:meth::`~taillight.signal.Signal.add`, but
+        """Similar to :py:meth:`~taillight.signal.Signal.add`, but
         is for use as a decorator.
 
         Use this when :py:meth:`~tailight.signal.Signal.add` is not sufficient
