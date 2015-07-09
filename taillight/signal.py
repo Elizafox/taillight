@@ -2,9 +2,7 @@
 # This file is part of the taillight project. See LICENSE in the root
 # directory for licensing information.
 
-
-"""This module contains the Signal class and exceptions related to signals."""
-
+"This module contains the Signal class and exceptions related to signals."
 
 from bisect import insort_left, insort_right
 from collections.abc import Iterable

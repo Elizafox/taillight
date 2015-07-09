@@ -21,7 +21,10 @@ class SlotNotFoundError(SlotError):
 class Slot:
     """A slot in a given signal.
 
-    This is also callable.
+    This is also callable, for purposes of enabling decorator usage.
+
+    You probably do not want to instantiate this yourself. You should use
+    :py:meth::`~taillight.signal.Signal.add`.
 
     """
 
@@ -33,7 +36,7 @@ class Slot:
 
         :param uid:
             UID of the slot. Assigned by
-            :py:meth::`~taillight.signal.Signal.add_priority`.
+            :py:meth::`~taillight.signal.Signal.add`.
 
         :param function:
             Function called when the signal is run.

@@ -3,6 +3,9 @@
 # directory for licensing information.
 
 
+"""Several constants are defined here."""
+
+
 __all__ = ["signal", "slot"]
 
 
