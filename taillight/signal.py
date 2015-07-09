@@ -2,6 +2,10 @@
 # This file is part of the taillight project. See LICENSE in the root
 # directory for licensing information.
 
+
+"""This module contains the Signal class and exceptions related to signals."""
+
+
 from bisect import insort_left, insort_right
 from collections.abc import Iterable
 from threading import Lock, RLock
@@ -20,8 +24,11 @@ class SignalStop(SignalException):
 
 
 class SignalDefer(SignalException):
-    """The exception raised when a signal needs to be deferred. The next call
-    will resume where it left off."""
+    """The exception raised when a signal needs to be deferred.
+
+    The next call will resume where it left off.
+
+    """
 
 
 class SignalError(SignalException):
@@ -75,6 +82,7 @@ class Signal:
     By default, when a function associated with a slot becomes garbage
     collected, it will be removed from the slots. The functions are kept
     as weak references.
+
     """
 
     _sigcreate_lock = Lock()  # Locking for the below dict
@@ -102,6 +110,7 @@ class Signal:
             Determines the behaviour of slot list insertion. By default, slots
             with lower priority values are run first. This may be changed by
             setting prio_descend to ``False``.
+
         """
         self.name = name
 
@@ -195,6 +204,7 @@ class Signal:
         :returns:
             A :py:class::`~taillight.slot.Slot` object that can be used to
             delete the slot later.
+
         """
         if function is None:
             return self.add_wraps(priority, listener)
@@ -245,6 +255,7 @@ class Signal:
 
         :param slot:
             The :py:class::`~taillight.slot.Slot` object to delete.
+
         """
         with self._slots_lock:
             if self._defer is not None:
@@ -271,6 +282,7 @@ class Signal:
 
         :param uid:
             The uid of the :py:class::`~taillight.slot.Slot` object to delete.
+
         """
         with self._slots_lock:
             if self._defer is not None:
@@ -311,6 +323,7 @@ class Signal:
 
         :returns:
             A list of return values from the callbacks.
+
         """
         with self._slots_lock:
             self.reset_defer()
@@ -330,6 +343,7 @@ class Signal:
 
         :returns:
             A list of return values from the callbacks.
+
         """
         ret = []
 

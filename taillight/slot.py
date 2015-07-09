@@ -2,6 +2,9 @@
 # This file is part of the taillight project. See LICENSE in the root
 # directory for licensing information.
 
+"""This module contains the Slot class and slot-related exceptions."""
+
+
 from functools import update_wrapper
 
 from taillight import TaillightException
@@ -16,10 +19,14 @@ class SlotNotFoundError(SlotError):
 
 
 class Slot:
-    """A slot in a given signal. This is also callable."""
+    """A slot in a given signal.
+
+    This is also callable.
+
+    """
 
     def __init__(self, priority, uid, function, listener):
-        """Initalise the Slot object
+        """Initalise the Slot object.
 
         :param priority:
             Priority of the slot.
@@ -33,6 +40,7 @@ class Slot:
 
         :param listener:
             The listener this object listens on.
+
         """
         self.priority = priority
         self.uid = uid
