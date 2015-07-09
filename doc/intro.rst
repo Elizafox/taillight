@@ -72,7 +72,7 @@ called unless the sender is set to ANY, or the sender matches the listener.
 
 Example:
 
-..code:: python
+.. code:: python
 
   from taillight import signal, ANY
   
@@ -94,7 +94,7 @@ Searching
 
 Taillight supports searching for slots by uid, function, or listener:
 
-..code:: python
+.. code:: python
   
   from taillight import signal, ANY
   
