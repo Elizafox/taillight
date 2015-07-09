@@ -77,9 +77,10 @@ class Signal:
     This class is thread-safe and all operations may be performed by multiple
     threads at once.
 
-    By default, when a function associated with a slot becomes garbage
-    collected, it will be removed from the slots. The functions are kept
-    as weak references.
+    Note unlike blinker, all references to functions in the slots are strong.
+    This is to ease the lifecycle management of objects, and allow for things
+    such as slots using ``lambda``. If such functionality is required, it is
+    easily implemented by using weakref proxies independently.
 
     """
 
