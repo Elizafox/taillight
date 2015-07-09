@@ -135,7 +135,7 @@ class Signal:
         if ret:
             return ret
         else:
-            raise SlotNotFoundError("Slot not found: {}".format(
+            raise SlotNotFoundError("Function not found: {}".format(
                 repr(function)))
 
     def find_uid(self, uid):
@@ -154,6 +154,27 @@ class Signal:
                     return slot
 
         raise SlotNotFoundError("Signal UID not found: {}".format(uid))
+
+    def find_listener(self, listener):
+        """Find the given :py:class::`~taillight.slot.Slot` instance(s) that
+        are listening on the given listener.
+
+        This returns a list of slots.
+        
+        If a slot with the given function is not found, then a
+        :py:class::`~taillight.slot.SlotNotFoundError` is raised.
+        """
+        ret = []
+        with self._slots_lock:
+            for slot in self.slots:
+                if slot.listener is listener:
+                    ret.append(slot)
+
+        if ret:
+            return ret
+        else:
+            raise SlotNotFoundError("Listener not found: {}".format(
+                repr(listener)))
 
     def __contains__(self, slot):
         return slot in self.slots
