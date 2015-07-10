@@ -4,6 +4,15 @@
 
 "This module contains the Signal class and exceptions related to signals."
 
+from warnings import warn
+
+try:
+    import asyncio
+except ImportError:
+    warn("Could not import asyncio, AsyncioSignal will not work!",
+         ImportWarning)
+    asyncio = None
+
 from bisect import insort_left, insort_right
 from collections.abc import Iterable
 from threading import Lock, RLock
@@ -328,6 +337,21 @@ class Signal:
             self.reset_defer()
             return self.call(sender, *args, **kwargs)
 
+    def yield_slots(self, sender):
+        """Yield slots from the slots list.
+
+        This is useful for advanced usage;
+        :py:meth:`~taillight.signal.Signal.call` also makes use of this.
+
+        :param sender:
+            The sender on this call.
+
+        """
+        with self._slots_lock:
+            for slot in self.slots:
+                if slot.listener is ANY or sender == slot.listener:
+                    yield slot
+
     def call(self, sender, *args, **kwargs):
         """Call the signal.
 
@@ -338,7 +362,7 @@ class Signal:
         :py:class:`~taillight.signal.SignalDefer`.
 
         :param sender:
-            The sender on this slot.
+            The sender on this call.
 
         :returns:
             A list of return values from the callbacks.
@@ -348,21 +372,20 @@ class Signal:
 
         with self._slots_lock:
             if self._defer is None:
-                slots = iter(self.slots)
+                slots = self.yield_slots(sender)
             else:
+                # XXX ignores sender
                 slots = self._defer
 
             for slot in slots:
-                if slot.listener is ANY or sender == slot.listener:
-                    # Run the slot
-                    try:
-                        ret.append(slot(sender, *args, **kwargs))
-                    except SignalStop as e:
-                        self.reset_defer()
-                        return ret
-                    except SignalDefer as e:
-                        self._defer = slots
-                        return ret
+                # Run the slot
+                try:
+                    ret.append(slot(sender, *args, **kwargs))
+                except SignalStop as e:
+                    break
+                except SignalDefer as e:
+                    self._defer = slots
+                    return ret
 
             self.reset_defer()
 
@@ -371,3 +394,46 @@ class Signal:
     def __repr__(self):
         return "Signal(name={}, prio_descend={}, slots={}".format(
             self.name, self.prio_descend, self.slots)
+
+
+class AsyncioSignal(Signal):
+    """A version of signal that supports asyncio coroutines as slots.
+
+    :py:meth:`~taillight.signal.Signal.call` becomes a coroutine (in Python
+    3.5, it will become an awaitable), Functions in slots can be coroutines as
+    well (in Python 3.5, they can be awaitables).
+
+    If asyncio is not present, this class is equivalent to Signal.
+    """
+
+if asyncio is not None:
+    class AsyncioSignal(Signal):
+
+        @asyncio.coroutine
+        def call(self, sender, *args, **kwargs):
+            ret = []
+
+            with self._slots_lock:
+                if self._defer is None:
+                    slots = self.yield_slots(sender)
+                else:
+                    # XXX ignores sender
+                    slots = self._defer
+
+                for slot in slots:
+                    # Run the slot
+                    try:
+                        s_ret = slot(sender, *args, **kwargs)
+                        if asyncio.iscoroutinefunction(slot.function):
+                            s_ret = yield from s_ret
+
+                        ret.append(s_ret)
+                    except SignalStop as e:
+                        break
+                    except SignalDefer as e:
+                        self._defer = slots
+                        return ret
+
+                self.reset_defer()
+
+            return ret
