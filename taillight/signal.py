@@ -87,7 +87,22 @@ class Signal:
     such as slots using ``lambda``. If such functionality is required, it is
     easily implemented by using weakref proxies independently.
 
+    :ivar slots:
+        The slots associated with this signal.
+
+    :ivar last_status:
+        The results of the last invocation of call/call_async.
+
     """
+
+    STATUS_DONE = 0
+    """All events executed during last invocation of call/call_async"""
+
+    STATUS_STOP = 1
+    """Events were terminated during last invocation of call/call_async"""
+
+    STATUS_DEFER = 2
+    """Events were paused during last invocation of call/call_async"""
 
     _sigcreate_lock = Lock()  # Locking for the below dict
     _signals = WeakValueDictionary()
@@ -124,6 +139,7 @@ class Signal:
         self._uid_lock = Lock()
 
         self._defer = None  # Used in deferral
+        self.last_status = None  # Last status of call()
 
         self.prio_descend = prio_descend
 
@@ -370,6 +386,8 @@ class Signal:
         """
         ret = []
 
+        self.last_status = self.STATUS_DONE
+
         with self._slots_lock:
             if self._defer is None:
                 slots = self.yield_slots(sender)
@@ -382,8 +400,10 @@ class Signal:
                 try:
                     ret.append(slot(sender, *args, **kwargs))
                 except SignalStop as e:
+                    self.last_status = self.STATUS_STOP
                     break
                 except SignalDefer as e:
+                    self.last_status = self.STATUS_DEFER
                     self._defer = slots
                     return ret
 
@@ -394,7 +414,6 @@ class Signal:
     if asyncio is not None:
         @asyncio.coroutine
         def call_async(self, sender, *args, **kwargs):
-            ret = []
             """Call the signal's slots asynchronously.
 
             All functions which are really coroutines are yielded from;
@@ -422,6 +441,10 @@ class Signal:
 
             """
 
+            ret = []
+
+            self.last_status = self.STATUS_DONE
+
             with self._slots_lock:
                 if self._defer is None:
                     slots = self.yield_slots(sender)
@@ -438,8 +461,10 @@ class Signal:
 
                         ret.append(s_ret)
                     except SignalStop as e:
+                        self.last_status = self.STATUS_STOP
                         break
                     except SignalDefer as e:
+                        self.last_status = self.STATUS_DEFER
                         self._defer = slots
                         return ret
 
