@@ -35,5 +35,5 @@ ANY = _AnyObject()
 
 
 # Important aliases
-from taillight.signal import Signal, AsyncioSignal
+from taillight.signal import Signal
 from taillight.slot import Slot

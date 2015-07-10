@@ -25,7 +25,7 @@ def coroutine_2(sender):
 class TestCallSlot(unittest.TestCase):
 
     def setUp(self):
-        self.signal = signal.AsyncioSignal()
+        self.signal = signal.Signal()
         self.loop = asyncio.get_event_loop()
 
     def tearDown(self):

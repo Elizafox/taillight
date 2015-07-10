@@ -177,7 +177,7 @@ class Signal:
         are listening on the given listener.
 
         This returns a list of slots.
-        
+
         If a slot with the given function is not found, then a
         :py:class:`~taillight.slot.SlotNotFoundError` is raised.
         """
@@ -353,13 +353,17 @@ class Signal:
                     yield slot
 
     def call(self, sender, *args, **kwargs):
-        """Call the signal.
+        """Call the signal's slots.
 
         All arguments and keywords are passed to the slots when run.
 
         Exceptions are propagated to the caller, except for
         :py:class:`~taillight.signal.SignalStop` and
         :py:class:`~taillight.signal.SignalDefer`.
+
+        .. note::
+            If any arguments are asyncio coroutines, use
+            :py:meth:`~taillight.signal.Signal.call_async` instead.
 
         :param sender:
             The sender on this call.
@@ -391,27 +395,36 @@ class Signal:
 
         return ret
 
-    def __repr__(self):
-        return "Signal(name={}, prio_descend={}, slots={}".format(
-            self.name, self.prio_descend, self.slots)
-
-
-class AsyncioSignal(Signal):
-    """A version of signal that supports asyncio coroutines as slots.
-
-    :py:meth:`~taillight.signal.Signal.call` becomes a coroutine (in Python
-    3.5, it will become an awaitable), Functions in slots can be coroutines as
-    well (in Python 3.5, they can be awaitables).
-
-    If asyncio is not present, this class is equivalent to Signal.
-    """
-
-if asyncio is not None:
-    class AsyncioSignal(Signal):
-
+    if asyncio is not None:
         @asyncio.coroutine
-        def call(self, sender, *args, **kwargs):
+        def call_async(self, sender, *args, **kwargs):
             ret = []
+            """Call the signal's slots asynchronously.
+
+            All functions which are really coroutines are yielded from;
+            otherwise, they are simply called.
+
+            This function is an asyncio coroutine - in Python 3.5, this is
+            subject to become an awaitable.
+
+            All arguments and keywords are passed to the slots when run.
+
+            Exceptions are propagated to the caller, except for
+            :py:class:`~taillight.signal.SignalStop` and
+            :py:class:`~taillight.signal.SignalDefer`.
+
+            .. warning::
+                This method requires asyncio to be made available. If it is
+                unavailable, no fallback is provided (it wouldn't make any
+                sense).
+
+            :param sender:
+                The sender on this call.
+
+            :returns:
+                A list of return values from the callbacks.
+
+            """
 
             with self._slots_lock:
                 if self._defer is None:
@@ -437,3 +450,8 @@ if asyncio is not None:
                 self.reset_defer()
 
             return ret
+
+    def __repr__(self):
+        return "Signal(name={}, prio_descend={}, slots={}".format(
+            self.name, self.prio_descend, self.slots)
+
