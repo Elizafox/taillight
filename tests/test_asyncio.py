@@ -70,5 +70,3 @@ class TestCallSlot(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    loop = asyncio.get_event_loop()
-    loop.close()
