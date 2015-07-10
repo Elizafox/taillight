@@ -9,7 +9,7 @@ from warnings import warn
 try:
     import asyncio
 except ImportError:
-    warn("Could not import asyncio, AsyncioSignal will not work!",
+    warn("Could not import asyncio, Signal.call_async will not work!",
          ImportWarning)
     asyncio = None
 
@@ -31,11 +31,7 @@ class SignalStop(SignalException):
 
 
 class SignalDefer(SignalException):
-    """The exception raised when a signal needs to be deferred.
-
-    The next call will resume where it left off.
-
-    """
+    """The exception raised when a signal needs to be deferred."""
 
 
 class SignalError(SignalException):
