@@ -30,7 +30,7 @@ class TestCallSlot(unittest.TestCase):
         global x, y
         slot = self.signal.add(test_func, listener="x")
         slot2 = self.signal.add(test_func2, listener="y")
-        
+
         self.signal.call("x")
         self.assertEqual(x, 1)
         self.assertEqual(y, 0)
@@ -45,6 +45,7 @@ class TestCallSlot(unittest.TestCase):
         slot2 = self.signal.add(test_func2, listener="y")
 
         self.signal.call(signal.ANY)
+        self.assertEqual(self.signal, signal.Signal.STATUS_DONE)
         self.assertEqual(x, 1)
         self.assertEqual(y, 1)
 
@@ -62,6 +63,7 @@ class TestCallSlot(unittest.TestCase):
 
         # Deferral point set
         self.assertIsNotNone(self.signal._defer)
+        self.assertEqual(self.signal, signal.Signal.STATUS_DEFER)
         self.assertEqual(x, 0)
         self.assertEqual(y, 0)
 
@@ -70,6 +72,7 @@ class TestCallSlot(unittest.TestCase):
 
         # Should have completed the chain
         self.assertIsNone(self.signal._defer)
+        self.assertEqual(self.signal, signal.Signal.STATUS_DONE)
         self.assertEqual(x, 1)
         self.assertEqual(y, 1)
 
