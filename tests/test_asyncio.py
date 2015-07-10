@@ -36,7 +36,7 @@ class TestCallSlot(unittest.TestCase):
         global x
         slot = self.signal.add(coroutine_1)
 
-        self.loop.run_until_complete(self.signal.call("x"))
+        self.loop.run_until_complete(self.signal.call_async("x"))
 
         self.assertEqual(x, 1)
     
@@ -44,7 +44,7 @@ class TestCallSlot(unittest.TestCase):
         global x
         slot = self.signal.add(function_1)
 
-        self.loop.run_until_complete(self.signal.call("y"))
+        self.loop.run_until_complete(self.signal.call_async("y"))
 
         self.assertEqual(y, 1)
     
@@ -52,7 +52,7 @@ class TestCallSlot(unittest.TestCase):
         global z
         slot = self.signal.add(coroutine_2)
         
-        self.loop.run_until_complete(self.signal.call("z"))
+        self.loop.run_until_complete(self.signal.call_async("z"))
 
         self.assertEqual(z, 1)
 
@@ -61,7 +61,7 @@ class TestCallSlot(unittest.TestCase):
         slot = [self.signal.add(function_1), self.signal.add(coroutine_1),
                 self.signal.add(coroutine_2)]
 
-        self.loop.run_until_complete(self.signal.call("xyz"))
+        self.loop.run_until_complete(self.signal.call_async("xyz"))
 
         self.assertEqual(x, 1)
         self.assertEqual(y, 1)
