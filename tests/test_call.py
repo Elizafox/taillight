@@ -16,6 +16,9 @@ def test_func2(sender):
 def test_defer1(sender):
     raise signal.SignalDefer()
 
+def test_stop1(sender):
+    raise signal.SignalStop()
+
 
 class TestCallSlot(unittest.TestCase):
 
@@ -49,15 +52,15 @@ class TestCallSlot(unittest.TestCase):
         self.assertEqual(x, 1)
         self.assertEqual(y, 1)
 
-        x = y = 0
+        # These should work without raising
         self.signal.delete(slot)
         self.signal.delete(slot2)
 
     def test_defer(self):
         global x, y
-        slot = self.signal.add(test_func, priority=2)
-        slot2 = self.signal.add(test_func2, priority=1)
-        slot3 = self.signal.add(test_defer1, priority=0)
+        self.signal.add(test_func, priority=2)
+        self.signal.add(test_func2, priority=1)
+        self.signal.add(test_defer1, priority=0)
 
         self.signal.call(signal.ANY)
 
@@ -76,9 +79,19 @@ class TestCallSlot(unittest.TestCase):
         self.assertEqual(x, 1)
         self.assertEqual(y, 1)
 
-        self.signal.delete(slot)
-        self.signal.delete(slot2)
-        self.signal.delete(slot3)
+    def test_stop(self):
+        global x, y
+        self.signal.add(test_func, priority=2)
+        self.signal.add(test_func2, priority=1)
+        self.signal.add(test_stop1, priority=0)
+
+        self.signal.call(signal.ANY)
+
+        # Deferral point should NOT be set
+        self.assertIsNone(self.signal._defer)
+        self.assertEqual(self.signal, signal.Signal.STATUS_STOP)
+        self.assertEqual(x, 0)
+        self.assertEqual(y, 0)
 
     def test_defer_ensure_raises(self):
         slot = self.signal.add(test_func, priority=2)
