@@ -29,6 +29,8 @@ class _AnyObject:
         # Supposed to be a singleton, so this is fine.
         return id(ANY)
 
+    def __repr__(self):
+        return "<ANY>"
 
 ANY = _AnyObject()
 """The predicate for signalling any slot."""
