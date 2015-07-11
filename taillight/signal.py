@@ -364,6 +364,16 @@ class Signal:
                 if slot.listener is ANY or sender == slot.listener:
                     yield slot
 
+    def defer_set_args(self, args=(), kwargs={}):
+        """Set the arguments when the signal is deferred.
+
+        This is an advanced function and should only be used if you truly know
+        what you're doing.
+
+        """
+        if self._defer is not None:
+            self._defer = (self._defer[0], args, kwargs)
+
     def call(self, sender, *args, **kwargs):
         """Call the signal's slots.
 
