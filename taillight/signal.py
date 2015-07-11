@@ -14,6 +14,7 @@ except ImportError:
     asyncio = None
 
 from bisect import insort_left, insort_right
+from collections import namedtuple
 from collections.abc import Iterable
 from threading import Lock, RLock
 from weakref import WeakValueDictionary
@@ -103,6 +104,8 @@ class Signal:
 
     STATUS_DEFER = 2
     """Events were paused during last invocation of call/call_async"""
+
+    _DeferType = namedtuple("_DeferType", "iterator args kwargs")
 
     _sigcreate_lock = Lock()  # Locking for the below dict
     _signals = WeakValueDictionary()
@@ -371,8 +374,10 @@ class Signal:
         what you're doing.
 
         """
-        if self._defer is not None:
-            self._defer = (self._defer[0], args, kwargs)
+        with self._slots_lock:
+            if self._defer is not None:
+                self._defer = self._DeferType(self._defer.iterator, args,
+                                              kwargs)
 
     def call(self, sender, *args, **kwargs):
         """Call the signal's slots.
@@ -405,11 +410,11 @@ class Signal:
                 slots = self.yield_slots(sender)
             else:
                 # XXX ignores sender
-                slots = self._defer[0]
+                slots = self._defer.iterator
 
                 if not args and kwargs:
-                    args = self._defer[1]
-                    kwargs = self._defer[2]
+                    args = self._defer.args
+                    kwargs = self._defer.kwargs
 
             for slot in slots:
                 # Run the slot
@@ -420,7 +425,7 @@ class Signal:
                     break
                 except SignalDefer as e:
                     self.last_status = self.STATUS_DEFER
-                    self._defer = (slots, args, kwargs)
+                    self._defer = self._DeferType(slots, args, kwargs)
                     return ret
 
             self.reset_defer()
@@ -468,11 +473,11 @@ class Signal:
                     slots = self.yield_slots(sender)
                 else:
                     # XXX ignores sender
-                    slots = self._defer[0]
+                    slots = self._defer.iterator
 
                     if not args and kwargs:
-                        args = self._defer[1]
-                        kwargs = self._defer[2]
+                        args = self._defer.args
+                        kwargs = self._defer.kwargs
 
                 for slot in slots:
                     # Run the slot
@@ -487,7 +492,7 @@ class Signal:
                         break
                     except SignalDefer as e:
                         self.last_status = self.STATUS_DEFER
-                        self._defer = (slots, args, kwargs)
+                        self._defer = self._DeferType(slots, args, kwargs)
                         return ret
 
                 self.reset_defer()
