@@ -237,7 +237,7 @@ class Signal:
             uid = self._uid
             self._uid += 1
 
-        s = Slot(priority, uid, function, listener)
+        s = Slot(self, priority, uid, function, listener)
 
         with self._slots_lock:
             if self._defer is not None:

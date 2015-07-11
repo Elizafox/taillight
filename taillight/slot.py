@@ -28,8 +28,11 @@ class Slot:
 
     """
 
-    def __init__(self, priority, uid, function, listener):
+    def __init__(self, signal, priority, uid, function, listener):
         """Initalise the Slot object.
+
+        :param signal:
+            A backreference to our :py:class:`~taillight.signal.Signal`.
 
         :param priority:
             Priority of the slot.
@@ -45,6 +48,7 @@ class Slot:
             The listener this object listens on.
 
         """
+        self.signal = signal
         self.priority = priority
         self.uid = uid
         self.function = function
