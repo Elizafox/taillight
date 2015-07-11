@@ -52,12 +52,13 @@ class Signal:
     based on the number of slot objects that have existed), a function, and
     arguments to call the function with.
 
-    This is conceptually similar to the concept of signals and slots, but with
-    greater emphasis on priorities and having a well-defined order that the
-    slots are called with. In addition, execution of slots may be stopped by
-    raising :py:class:`~taillight.signal.SignalStop`, and deferred by raising
-    :py:class:`~taillight.signal.SignalDefer`, where the signal will resume
-    calling where it left off.
+    This is conceptually similar to (and a great deal like) signals and slots,
+    but with greater emphasis on priorities and having a well-defined order
+    that the slots are called with. In addition, execution of slots may be
+    stopped by raising :py:class:`~taillight.signal.SignalStop`. Signals may
+    also be paused by raising :py:class:`~taillight.signal.SignalDefer`, where
+    the signal will resume calling where it left off (preserving the arguments
+    last called with, if none are passed in).
 
     When the signal is in a deferred state, adding or deleting slots is not
     allowed, as this would lead to inconsistencies in how the new slots should
