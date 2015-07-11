@@ -1,6 +1,7 @@
 import unittest
 from taillight import signal
 
+
 class TestFindFunction(unittest.TestCase):
 
     def setUp(self):
@@ -8,7 +9,7 @@ class TestFindFunction(unittest.TestCase):
 
     def test_uid(self):
         sig = signal.Signal()
-        
+
         function = lambda x: None
         slot = self.signal.add(function)
         slot2 = self.signal.add(function)
@@ -23,7 +24,7 @@ class TestFindFunction(unittest.TestCase):
 
     def test_function(self):
         sig = signal.Signal()
-        
+
         function = lambda x: None
         slot = self.signal.add(function)
         slot2 = self.signal.add(function)

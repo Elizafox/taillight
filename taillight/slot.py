@@ -79,4 +79,3 @@ class Slot:
 
     def __ne__(self, other):
         return (self.priority, self.uid) != (other.priority, other.uid)
-

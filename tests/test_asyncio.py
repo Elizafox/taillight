@@ -6,14 +6,17 @@ x = 0
 y = 0
 z = 0
 
+
 @asyncio.coroutine
 def coroutine_1(sender):
     global x
     x += 1
 
+
 def function_1(sender):
     global y
     y += 1
+
 
 @asyncio.coroutine
 def coroutine_2(sender):
@@ -39,7 +42,7 @@ class TestCallSlot(unittest.TestCase):
         self.loop.run_until_complete(self.signal.call_async("x"))
 
         self.assertEqual(x, 1)
-    
+
     def test_call_function(self):
         global x
         slot = self.signal.add(function_1)
@@ -47,11 +50,11 @@ class TestCallSlot(unittest.TestCase):
         self.loop.run_until_complete(self.signal.call_async("y"))
 
         self.assertEqual(y, 1)
-    
+
     def test_call_yield_from(self):
         global z
         slot = self.signal.add(coroutine_2)
-        
+
         self.loop.run_until_complete(self.signal.call_async("z"))
 
         self.assertEqual(z, 1)

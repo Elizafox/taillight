@@ -2,19 +2,26 @@ import unittest
 from taillight import signal
 
 x = 0
+
+
 def test_func(sender):
     global x
     x += 1
     return x
 
+
 y = 0
+
+
 def test_func2(sender):
     global y
     y += 1
     return y
 
+
 def test_defer1(sender):
     raise signal.SignalDefer()
+
 
 def test_stop1(sender):
     raise signal.SignalStop()

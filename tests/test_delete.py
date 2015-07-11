@@ -2,6 +2,7 @@ import unittest
 from taillight import signal
 from taillight.slot import SlotNotFoundError
 
+
 class TestDeleteSlot(unittest.TestCase):
 
     def setUp(self):
