@@ -367,7 +367,9 @@ class Signal:
     def call(self, sender, *args, **kwargs):
         """Call the signal's slots.
 
-        All arguments and keywords are passed to the slots when run.
+        All arguments and keywords are passed to the slots when run. If a
+        callback is resuming, the arguments from last time are deleted if any
+        arguments are passed in, otherwise they're kept.
 
         Exceptions are propagated to the caller, except for
         :py:class:`~taillight.signal.SignalStop` and
@@ -393,7 +395,11 @@ class Signal:
                 slots = self.yield_slots(sender)
             else:
                 # XXX ignores sender
-                slots = self._defer
+                slots = self._defer[0]
+
+                if not args and kwargs:
+                    args = self._defer[1]
+                    kwargs = self._defer[2]
 
             for slot in slots:
                 # Run the slot
@@ -404,7 +410,7 @@ class Signal:
                     break
                 except SignalDefer as e:
                     self.last_status = self.STATUS_DEFER
-                    self._defer = slots
+                    self._defer = (slots, args, kwargs)
                     return ret
 
             self.reset_defer()
@@ -422,7 +428,9 @@ class Signal:
             This function is an asyncio coroutine - in Python 3.5, this is
             subject to become an awaitable.
 
-            All arguments and keywords are passed to the slots when run.
+            All arguments and keywords are passed to the slots when run. If a
+            callback is resuming, the arguments from last time are deleted if
+            any arguments are passed in, otherwise they're kept.
 
             Exceptions are propagated to the caller, except for
             :py:class:`~taillight.signal.SignalStop` and
@@ -450,7 +458,11 @@ class Signal:
                     slots = self.yield_slots(sender)
                 else:
                     # XXX ignores sender
-                    slots = self._defer
+                    slots = self._defer[0]
+
+                    if not args and kwargs:
+                        args = self._defer[1]
+                        kwargs = self._defer[2]
 
                 for slot in slots:
                     # Run the slot
@@ -465,7 +477,7 @@ class Signal:
                         break
                     except SignalDefer as e:
                         self.last_status = self.STATUS_DEFER
-                        self._defer = slots
+                        self._defer = (slots, args, kwargs)
                         return ret
 
                 self.reset_defer()
