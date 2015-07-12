@@ -1,30 +1,36 @@
 import unittest
-import asyncio
 from taillight import signal
+
+try:
+    import asyncio
+except ImportError:
+    asyncio = None
 
 x = 0
 y = 0
 z = 0
 
 
-@asyncio.coroutine
-def coroutine_1(sender):
-    global x
-    x += 1
+if asyncio is not None:
+    @asyncio.coroutine
+    def coroutine_1(sender):
+        global x
+        x += 1
 
 
-def function_1(sender):
-    global y
-    y += 1
+    def function_1(sender):
+        global y
+        y += 1
 
 
-@asyncio.coroutine
-def coroutine_2(sender):
-    global z
-    yield from asyncio.sleep(0.01)
-    z += 1
+    @asyncio.coroutine
+    def coroutine_2(sender):
+        global z
+        yield from asyncio.sleep(0.01)
+        z += 1
 
 
+@unittest.skipIf(asyncio is None, "asyncio not found")
 class TestCallSlot(unittest.TestCase):
 
     def setUp(self):
