@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright © 2015 Elizabeth Myers. All rights reserved.
 # This file is part of the taillight project. See LICENSE in the root
 # directory for licensing information.
