@@ -52,19 +52,20 @@ class Signal:
     based on the number of slot objects that have existed), a function, and
     arguments to call the function with.
 
-    This is conceptually similar to (and a great deal like) signals and slots,
-    but with greater emphasis on priorities and having a well-defined order
-    that the slots are called with. In addition, execution of slots may be
-    stopped by raising :py:class:`~taillight.signal.SignalStop`. Signals may
-    also be paused by raising :py:class:`~taillight.signal.SignalDefer`, where
-    the signal will resume calling where it left off (preserving the arguments
-    last called with, if none are passed in).
+    This is essentially the signals and slots pattern, but with support for
+    slot priorities and having a well-defined order that the slots are called
+    in. In addition, execution of slots may be stopped by raising
+    :py:class:`~taillight.signal.SignalStop`. Signals may also be paused by
+    raising :py:class:`~taillight.signal.SignalDefer`, where the signal will
+    resume calling where it left off (preserving the arguments last called
+    with, if none are passed in).
 
     When the signal is in a deferred state, adding or deleting slots is not
     allowed, as this would lead to inconsistencies in how the new slots should
     be called and how the deleted slots should be handled. However, a simple
     call to :py:meth:`~taillight.signal.Signal.reset_defer` resets the
-    signal.
+    signal's deferred state; however, the calls will not pick up where they
+    left off, and will restart from the beginning.
 
     By default, the slots are ordered by lowest priority first (0, 1, 2...).
     This is in line with the Unix style of priorities, and is rather intuitive
@@ -84,10 +85,16 @@ class Signal:
     This class is thread-safe and all operations may be performed by multiple
     threads at once.
 
-    Note unlike blinker, all references to functions in the slots are strong.
-    This is to ease the lifecycle management of objects, and allow for things
-    such as slots using ``lambda``. If such functionality is required, it is
-    easily implemented by using weakref proxies independently.
+    Like blinker, two signals with the same name will have shared slots. This
+    does have an important implication: ``prio_descend`` cannot be changed
+    once it has been decided for a slot, until all strong references to the
+    signal are freed.
+
+    However, unlike blinker, all references to functions in the slots are
+    strong. The complexity of weak references to methods, and especially
+    decorated functions, aren't considered worth it. This also allows for
+    things such as slots using ``lambda``. If such functionality is required,
+    it is easily implemented by using weakref proxies independently.
 
     :ivar slots:
         The slots associated with this signal.
@@ -106,10 +113,56 @@ class Signal:
     STATUS_DEFER = 2
     """Events were paused during last invocation of call/call_async"""
 
+    PRIORITY_NORMAL = 0
+    """The normal priority point - this does not change even if
+    ``prio_descend`` is in effect."""
+
     _DeferType = namedtuple("_DeferType", "iterator args kwargs")
 
     _sigcreate_lock = Lock()  # Locking for the below dict
     _signals = WeakValueDictionary()
+
+    def priority_higher(self, *args, boost=1):
+        """Return a priority value above the slots specified in the
+        arguments.
+
+        This respects the value of ``prio_descend``.
+        
+        :param boost:
+            Boost the priority by this amount.
+
+        """
+        if not args:
+            args = self.slots
+
+        attr = attrgetter("priority")
+        if prio_descend:
+            # Higher numbers = higher priority
+            return attr(max(*args, key=attr)) + boost
+        else:
+            # Lower numbers = higher priority
+            return attr(min(*args, key=attr)) - boost
+
+    def priority_lower(self, *args, boost=1):
+        """Return a priority value below the slots specified in the
+        arguments.
+
+        This respects the value of ``prio_descend``.
+        
+        :param boost:
+            Boost the priority by this amount.
+        
+        """
+        if not args:
+            args = self.slots
+
+        attr = attrgetter("priority")
+        if prio_descend:
+            # Lower numbers = lower priority
+            return attr(min(*args, key=attr)) - boost
+        else:
+            # Higher numbers = lower priority
+            return attr(max(*args, key=attr)) + boost
 
     def __new__(cls, name=None, prio_descend=True):
         with Signal._sigcreate_lock:
@@ -212,7 +265,7 @@ class Signal:
     def __contains__(self, slot):
         return slot in self.slots
 
-    def add(self, function=None, priority=0, listener=ANY):
+    def add(self, function=None, priority=PRIORITY_NORMAL, listener=ANY):
         """Add a given slot function to the signal with a given priority.
 
         :param function:
@@ -252,7 +305,7 @@ class Signal:
 
         return s
 
-    def add_wraps(self, priority=0, listener=ANY):
+    def add_wraps(self, priority=PRIORITY_NORMAL, listener=ANY):
         """Similar to :py:meth:`~taillight.signal.Signal.add`, but
         is for use as a decorator.
 
