@@ -501,6 +501,16 @@ class Signal:
             return ret
 
     def __repr__(self):
-        return "Signal(name={}, prio_descend={}, slots={}".format(
+        return "Signal(name={}, prio_descend={}, slots={})".format(
             self.name, self.prio_descend, self.slots)
 
+
+def UnsharedSignal(Signal):
+    """Like a :py:class:`~taillight.signal.Signal`, but multiple calls with
+    the same name do not return the same signal."""
+
+    __new__ = type.__new__
+
+    def __repr__(self):
+        return "UnsharedSignal(name={}, prio_descend={}, slots={})".format(
+            self.name, self.prio_descend, self.slots)
