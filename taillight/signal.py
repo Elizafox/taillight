@@ -403,6 +403,10 @@ class Signal:
         it also includes checking if the signal is deferred. Otherwise, it
         shares all the semantics of ``call``.
 
+        .. note::
+            If any slot functions are asyncio coroutines, use
+            :py:meth:`~taillight.signal.Signal.resume_async` instead.
+
         """
         with self._slots_lock:
             if self._defer is None:
@@ -422,7 +426,7 @@ class Signal:
         :py:class:`~taillight.signal.SignalDefer`.
 
         .. note::
-            If any arguments are asyncio coroutines, use
+            If any slot functions are asyncio coroutines, use
             :py:meth:`~taillight.signal.Signal.call_async` instead.
 
         :param sender:
