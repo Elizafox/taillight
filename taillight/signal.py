@@ -299,10 +299,7 @@ class Signal:
                 raise SignalDeferralSetError("Cannot add due to deferral "
                                              "point being set")
 
-            if self.prio_descend:
-                insort_right(self.slots, s)
-            else:
-                insort_left(self.slots, s)
+            insort_right(self.slots, s)
 
         return s
 
@@ -418,7 +415,9 @@ class Signal:
 
         """
         with self._slots_lock:
-            for slot in self.slots:
+            # Use reverse iterator if prio_descend is False (ascending order)
+            slots = self.slots if self.prio_descend else reversed(self.slots)
+            for slot in slots:
                 if slot.listener is ANY or sender == slot.listener:
                     yield slot
 
