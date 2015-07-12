@@ -16,6 +16,7 @@ except ImportError:
 from bisect import insort_left, insort_right
 from collections import namedtuple
 from collections.abc import Iterable
+from operator import attrgetter
 from threading import Lock, RLock
 from weakref import WeakValueDictionary
 
@@ -136,12 +137,12 @@ class Signal:
             args = self.slots
 
         attr = attrgetter("priority")
-        if prio_descend:
-            # Higher numbers = higher priority
-            return attr(max(*args, key=attr)) + boost
-        else:
+        if self.prio_descend:
             # Lower numbers = higher priority
-            return attr(min(*args, key=attr)) - boost
+            return attr(min(args, key=attr)) - boost
+        else:
+            # Higher numbers = higher priority
+            return attr(max(args, key=attr)) + boost
 
     def priority_lower(self, *args, boost=1):
         """Return a priority value below the slots specified in the
@@ -157,12 +158,12 @@ class Signal:
             args = self.slots
 
         attr = attrgetter("priority")
-        if prio_descend:
-            # Lower numbers = lower priority
-            return attr(min(*args, key=attr)) - boost
-        else:
+        if self.prio_descend:
             # Higher numbers = lower priority
-            return attr(max(*args, key=attr)) + boost
+            return attr(max(args, key=attr)) + boost
+        else:
+            # Lower numbers = lower priority
+            return attr(min(args, key=attr)) - boost
 
     def __new__(cls, name=None, prio_descend=True):
         with Signal._sigcreate_lock:
