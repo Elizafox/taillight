@@ -369,10 +369,11 @@ class Signal:
                     yield slot
 
     def defer_set_args(self, args=None, kwargs=None):
-        """Set the arguments when the signal is deferred.
+        """Set the arguments when the signal is deferred. If both arguments
+        are None, the arguments are unset.
 
-        This is an advanced function and should only be used if you truly know
-        what you're doing.
+        This function should only be directly used if you need to manually
+        unset the arguments before resuming a deferred call.
 
         """
         if (args, kwargs) is (None, None):
@@ -391,6 +392,23 @@ class Signal:
                 kwargs = self._defer.kwargs
 
             self._defer = self._DeferType(self._defer.iterator, args, kwargs)
+
+    def resume(self, sender):
+        """Resume a deferred call.
+
+        If the signal is not in a deferred state, this returns None; else it
+        returns the results of the remaining calls.
+
+        This is a wrapper around :py:meth:`~taillight.signal.Signal.call`, but
+        it also includes checking if the signal is deferred. Otherwise, it
+        shares all the semantics of ``call``.
+
+        """
+        with self._slots_lock:
+            if self._defer is None:
+                return
+
+            return self.call(sender)
 
     def call(self, sender, *args, **kwargs):
         """Call the signal's slots.
@@ -511,6 +529,31 @@ class Signal:
                 self.reset_defer()
 
             return ret
+
+        @asyncio.coroutine
+        def resume_async(self, sender):
+            """Resume a deferred asynchronous call.
+
+            If the signal is not in a deferred state, this returns None; else
+            it returns the results of the remaining calls.
+
+            This is a wrapper around
+            :py:meth:`~taillight.signal.Signal.call_async`, but it also
+            includes checking if the signal is deferred. Otherwise, it shares
+            all the semantics of ``call_async``.
+
+            .. warning::
+                This method requires asyncio to be made available. If it is
+                unavailable, no fallback is provided (it wouldn't make any
+                sense).
+
+            """
+            with self._slots_lock:
+                if self._defer is None:
+                    return
+
+                ret = yield from self.call_async(sender)
+                return ret
 
     def __repr__(self):
         return "Signal(name={}, prio_descend={}, slots={})".format(
