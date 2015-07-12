@@ -617,11 +617,12 @@ class Signal:
             self.name, self.prio_descend, self.slots)
 
 
-def UnsharedSignal(Signal):
+class UnsharedSignal(Signal):
     """Like a :py:class:`~taillight.signal.Signal`, but multiple calls with
     the same name do not return the same signal."""
 
-    __new__ = type.__new__
+    def __new__(cls, *args, **kwargs):
+        return object.__new__(cls)
 
     def __repr__(self):
         return "UnsharedSignal(name={}, prio_descend={}, slots={})".format(
