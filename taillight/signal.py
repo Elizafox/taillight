@@ -368,17 +368,29 @@ class Signal:
                 if slot.listener is ANY or sender == slot.listener:
                     yield slot
 
-    def defer_set_args(self, args=(), kwargs={}):
+    def defer_set_args(self, args=None, kwargs=None):
         """Set the arguments when the signal is deferred.
 
         This is an advanced function and should only be used if you truly know
         what you're doing.
 
         """
+        if (args, kwargs) is (None, None):
+            # Unset args
+            args = ()
+            kwargs = {}
+
         with self._slots_lock:
-            if self._defer is not None:
-                self._defer = self._DeferType(self._defer.iterator, args,
-                                              kwargs)
+            if self._defer is None:
+                return
+
+            if args is None:
+                args = self._defer.args
+
+            if kwargs is None:
+                kwargs = self._defer.kwargs
+
+            self._defer = self._DeferType(self._defer.iterator, args, kwargs)
 
     def call(self, sender, *args, **kwargs):
         """Call the signal's slots.
@@ -413,9 +425,9 @@ class Signal:
                 # XXX ignores sender
                 slots = self._defer.iterator
 
-                if not args and kwargs:
-                    args = self._defer.args
-                    kwargs = self._defer.kwargs
+                if args or kwargs:
+                    # Reset args
+                    self.defer_set_args(args, kwargs)
 
             for slot in slots:
                 # Run the slot
@@ -476,9 +488,9 @@ class Signal:
                     # XXX ignores sender
                     slots = self._defer.iterator
 
-                    if not args and kwargs:
-                        args = self._defer.args
-                        kwargs = self._defer.kwargs
+                    if args or kwargs:
+                        # Reset args
+                        self.defer_set_args(args, kwargs)
 
                 for slot in slots:
                     # Run the slot
