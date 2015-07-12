@@ -9,6 +9,7 @@ and aliases for two important classes: :py:class:`~taillight.signal.Signal`,
 and :py:class:`~taillight.slot.Slot`."""
 
 
+
 __all__ = ["signal", "slot"]
 
 
@@ -32,9 +33,9 @@ class _AnyObject:
     def __repr__(self):
         return "<ANY>"
 
+
 ANY = _AnyObject()
 """The predicate for signalling any slot."""
-
 
 # Important aliases
 from taillight.signal import Signal
