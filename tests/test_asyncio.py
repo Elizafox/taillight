@@ -6,6 +6,14 @@ try:
 except ImportError:
     asyncio = None
 
+
+def tearDownModule:
+    if asyncio is not None:
+        loop = asyncio.get_event_loop()
+        loop.stop()
+        loop.close()
+
+
 x = 0
 y = 0
 z = 0
