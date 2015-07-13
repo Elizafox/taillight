@@ -300,7 +300,7 @@ class Signal:
             uid = self._uid
             self._uid += 1
 
-        s = Slot(self, priority, uid, function, listener)
+        slot = Slot(self, priority, uid, function, listener)
 
         with self._slots_lock:
             if self._defer is not None:
@@ -308,9 +308,9 @@ class Signal:
                 raise SignalDeferralSetError("Cannot add due to deferral "
                                              "point being set")
 
-            insort_right(self.slots, s)
+            insort_right(self.slots, slot)
 
-        return s
+        return slot
 
     def add_wraps(self, priority=PRIORITY_NORMAL, listener=ANY):
         """Similar to :py:meth:`~taillight.signal.Signal.add`, but
@@ -360,6 +360,18 @@ class Signal:
             else:
                 raise TypeError("Expected Slot or Iterable, got {}".format(
                     type(slot).__name__))
+
+    def delete_function(self, function):
+        """Delete a function from the signal.
+
+        This will delete every slot that contains this signal.
+
+        :param function:
+            The function to remove.
+
+        """
+        with self._slots_lock:
+            self.delete(self.find_function(function))
 
     def delete_uid(self, uid):
         """Delete the slot with the given UID from the signal.
