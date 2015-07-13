@@ -123,6 +123,7 @@ class Signal:
 
     _sigcreate_lock = Lock()  # Locking for the below dict
     _signals = WeakValueDictionary()
+    _siginit_lock = Lock()  # Locking for calls to __init__
 
     def __new__(cls, name=None, prio_descend=True):
         with Signal._sigcreate_lock:
@@ -149,22 +150,25 @@ class Signal:
             setting prio_descend to ``False``.
 
         """
-        if not hasattr(self, "slots"):
+        with Signal._siginit_lock:
             # __new__ will result in the __init__ method being called, so
             # ensure we're not completely reset.
-            self.name = name
+            if hasattr(self, "slots"):
+                return
+            else:
+                self.slots = list()
 
-            self._slots_lock = RLock()  # The GIL shouldn't be relied on!
+        self.name = name
 
-            self._uid = 0
-            self._uid_lock = Lock()
+        self._slots_lock = RLock()  # The GIL shouldn't be relied on!
 
-            self._defer = None  # Used in deferral
-            self.last_status = None  # Last status of call()
+        self._uid = 0
+        self._uid_lock = Lock()
 
-            self.prio_descend = prio_descend
+        self._defer = None  # Used in deferral
+        self.last_status = None  # Last status of call()
 
-            self.slots = list()
+        self.prio_descend = prio_descend
     
     def priority_higher(self, *args, boost=1):
         """Return a priority value above the slots specified in the
