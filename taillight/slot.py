@@ -60,6 +60,12 @@ class Slot:
     def __call__(self, caller, *args, **kwargs):
         return self.function(caller, *args, **kwargs)
 
+    def __get__(self, obj, type=None):
+        if obj is None:
+            return self
+        new_function = self.function.__get__(obj, type)
+        return self.__class__(new_function)
+
     def __hash__(self):
         h = hash((self.priority, self.uid, self.function, self.listener))
 
