@@ -14,6 +14,23 @@ class TestSignalObject(unittest.TestCase):
         self.assertIs(signal_b, signal_b2)
         self.assertIsNot(signal_a, signal_b)
 
+    def test_singleton_add(self):
+        signal_a = signal.Signal("a")
+
+        function1 = lambda x: None
+        function2 = lambda y: None
+
+        signal_a.add(function1)
+        signal_a.add(function2)
+
+        signal_a_slots = signal_a.slots
+
+        # This shouldn't wipe out the previous functions
+        signal_a2 = signal.Signal("a")
+
+        self.assertListEqual(signal_a_slots, signal_a2.slots)
+        self.assertListEqual(signal_a.slots, signal_a2.slots)  # Subtle!
+
     def test_unshared(self):
         signal_a = signal.UnsharedSignal("a")
         signal_b = signal.UnsharedSignal("b")

@@ -130,6 +130,8 @@ class Signal:
                 return super().__new__(cls)
 
             signal = Signal._signals.get(name, super().__new__(cls))
+
+            # This doesn't really hurt if we do it twice.
             Signal._signals[name] = signal
 
             return signal
@@ -147,19 +149,22 @@ class Signal:
             setting prio_descend to ``False``.
 
         """
-        self.name = name
+        if not hasattr(self, "slots"):
+            # __new__ will result in the __init__ method being called, so
+            # ensure we're not completely reset.
+            self.name = name
 
-        self._slots_lock = RLock()  # The GIL shouldn't be relied on!
+            self._slots_lock = RLock()  # The GIL shouldn't be relied on!
 
-        self._uid = 0
-        self._uid_lock = Lock()
+            self._uid = 0
+            self._uid_lock = Lock()
 
-        self._defer = None  # Used in deferral
-        self.last_status = None  # Last status of call()
+            self._defer = None  # Used in deferral
+            self.last_status = None  # Last status of call()
 
-        self.prio_descend = prio_descend
+            self.prio_descend = prio_descend
 
-        self.slots = list()
+            self.slots = list()
     
     def priority_higher(self, *args, boost=1):
         """Return a priority value above the slots specified in the
