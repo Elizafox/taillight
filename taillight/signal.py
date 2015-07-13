@@ -372,6 +372,11 @@ class Signal:
 
         raise SlotNotFoundError("Signal UID not found: {}".format(uid))
 
+    def clear(self):
+        """Clear the slot of all signals."""
+        with self._slots_lock:
+            self.slots.clear()
+
     def reset_defer(self):
         """Reset the deferred status of the signal, causing the deferred point
         to be reset."""
