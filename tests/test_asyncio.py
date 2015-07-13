@@ -7,7 +7,7 @@ except ImportError:
     asyncio = None
 
 
-def tearDownModule:
+def tearDownModule():
     if asyncio is not None:
         loop = asyncio.get_event_loop()
         loop.stop()
