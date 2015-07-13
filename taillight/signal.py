@@ -124,6 +124,44 @@ class Signal:
     _sigcreate_lock = Lock()  # Locking for the below dict
     _signals = WeakValueDictionary()
 
+    def __new__(cls, name=None, prio_descend=True):
+        with Signal._sigcreate_lock:
+            if name is None:
+                return super().__new__(cls)
+
+            signal = Signal._signals.get(name, None)
+            if signal is None:
+                signal = Signal._signals[name] = super().__new__(cls)
+
+            return signal
+
+    def __init__(self, name=None, prio_descend=True):
+        """Create the Signal object.
+
+        :param name:
+            The name of the signal. Presently not used for much, but may be
+            used as a unique identifier for signals in the future.
+
+        :param prio_descend:
+            Determines the behaviour of slot list insertion. By default, slots
+            with lower priority values are run first. This may be changed by
+            setting prio_descend to ``False``.
+
+        """
+        self.name = name
+
+        self._slots_lock = RLock()  # The GIL shouldn't be relied on!
+
+        self._uid = 0
+        self._uid_lock = Lock()
+
+        self._defer = None  # Used in deferral
+        self.last_status = None  # Last status of call()
+
+        self.prio_descend = prio_descend
+
+        self.slots = list()
+    
     def priority_higher(self, *args, boost=1):
         """Return a priority value above the slots specified in the
         arguments.
@@ -165,44 +203,6 @@ class Signal:
         else:
             # Lower numbers = lower priority
             return attr(min(args, key=attr)) - boost
-
-    def __new__(cls, name=None, prio_descend=True):
-        with Signal._sigcreate_lock:
-            if name is None:
-                return super().__new__(cls)
-
-            signal = Signal._signals.get(name, None)
-            if signal is None:
-                signal = Signal._signals[name] = super().__new__(cls)
-
-            return signal
-
-    def __init__(self, name=None, prio_descend=True):
-        """Create the Signal object.
-
-        :param name:
-            The name of the signal. Presently not used for much, but may be
-            used as a unique identifier for signals in the future.
-
-        :param prio_descend:
-            Determines the behaviour of slot list insertion. By default, slots
-            with lower priority values are run first. This may be changed by
-            setting prio_descend to ``False``.
-
-        """
-        self.name = name
-
-        self._slots_lock = RLock()  # The GIL shouldn't be relied on!
-
-        self._uid = 0
-        self._uid_lock = Lock()
-
-        self._defer = None  # Used in deferral
-        self.last_status = None  # Last status of call()
-
-        self.prio_descend = prio_descend
-
-        self.slots = list()
 
     def find_function(self, function):
         """Find the given :py:class:`~taillight.slot.Slot` instance(s), given
