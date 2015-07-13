@@ -126,10 +126,10 @@ class Signal:
     _siginit_lock = Lock()  # Locking for calls to __init__
 
     def __new__(cls, name=None, prio_descend=True):
-        with Signal._sigcreate_lock:
-            if name is None:
-                return super().__new__(cls)
+        if name is None:
+            return super().__new__(cls)
 
+        with Signal._sigcreate_lock:
             signal = Signal._signals.get(name, super().__new__(cls))
 
             # This doesn't really hurt if we do it twice.
