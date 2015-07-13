@@ -129,9 +129,8 @@ class Signal:
             if name is None:
                 return super().__new__(cls)
 
-            signal = Signal._signals.get(name, None)
-            if signal is None:
-                signal = Signal._signals[name] = super().__new__(cls)
+            signal = Signal._signals.get(name, super().__new__(cls))
+            Signal._signals[name] = signal
 
             return signal
 
