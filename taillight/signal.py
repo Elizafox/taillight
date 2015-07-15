@@ -530,6 +530,9 @@ class Signal:
                     # Reset args
                     self.defer_set_args(args, kwargs)
 
+                args = self._defer.args
+                kwargs = self._defer.kwargs
+
             for slot in slots:
                 # Run the slot
                 try:
@@ -579,6 +582,8 @@ class Signal:
             """
 
             ret = []
+            slot_args = args
+            slot_kwargs = kwargs
 
             self.last_status = self.STATUS_DONE
 
@@ -593,10 +598,13 @@ class Signal:
                         # Reset args
                         self.defer_set_args(args, kwargs)
 
+                    slot_args = self._defer.args
+                    slot_kwargs = self._defer.kwargs
+
                 for slot in slots:
                     # Run the slot
                     try:
-                        s_ret = slot(sender, *args, **kwargs)
+                        s_ret = slot(sender, *slot_args, **slot_kwargs)
                         if asyncio.iscoroutinefunction(slot.function):
                             s_ret = yield from s_ret
 
