@@ -27,6 +27,21 @@ def test_stop1(sender):
     raise signal.SignalStop()
 
 
+number = 0
+fox = None
+
+
+def test_defer_args1(sender, arg, noise):
+    global number
+    number = arg
+    raise signal.SignalDefer()
+
+
+def test_defer_args2(sender, arg, noise):
+    global fox
+    fox = noise
+
+
 class TestCallSlot(unittest.TestCase):
 
     def setUp(self):
@@ -87,6 +102,29 @@ class TestCallSlot(unittest.TestCase):
         self.assertEqual(self.signal.last_status, signal.Signal.STATUS_DONE)
         self.assertEqual(x, 1)
         self.assertEqual(y, 1)
+
+    def test_defer_arg_save(self):
+        global number, fox
+        slot1 = self.signal.add(test_defer_args2)
+        slot2 = self.signal.add(test_defer_args1,
+                                priority=self.signal.priority_higher(slot1))
+
+        self.signal.call(signal.ANY, 123, 'arf')
+
+        # Should be deferred..
+        self.assertIsNotNone(self.signal._defer)
+
+        # but the first var should be set properly...
+        self.assertEqual(number, 123)
+
+        # and the other var should still be untouched...
+        self.assertIsNone(fox)
+
+        # now resume...
+        self.signal.call(signal.ANY)
+
+        # and ensure the other method set the other var
+        self.assertEqual(fox, 'arf')
 
     def test_stop(self):
         global x, y
