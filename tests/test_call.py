@@ -2,28 +2,26 @@ import unittest
 from taillight import signal
 
 x = 0
+y = 0
 
 
-def test_func(sender):
+def test_func(sender, arg=None):
     global x
     x += 1
     return x
 
 
-y = 0
-
-
-def test_func2(sender):
+def test_func2(sender, arg=None):
     global y
     y += 1
     return y
 
 
-def test_defer1(sender):
+def test_defer(sender, arg=None):
     raise signal.SignalDefer()
 
 
-def test_stop1(sender):
+def test_stop(sender, arg=None):
     raise signal.SignalStop()
 
 
@@ -83,7 +81,7 @@ class TestCallSlot(unittest.TestCase):
         slot1 = self.signal.add(test_func)
         slot2 = self.signal.add(test_func2,
                                 priority=self.signal.priority_higher(slot1))
-        slot3 = self.signal.add(test_defer1,
+        slot3 = self.signal.add(test_defer,
                                 priority=self.signal.priority_higher(slot2))
 
         self.signal.call(signal.ANY)
@@ -131,7 +129,7 @@ class TestCallSlot(unittest.TestCase):
         slot1 = self.signal.add(test_func)
         slot2 = self.signal.add(test_func2,
                                 priority=self.signal.priority_higher(slot1))
-        slot3 = self.signal.add(test_stop1,
+        slot3 = self.signal.add(test_stop,
                                 priority=self.signal.priority_higher(slot2))
 
         self.signal.call(signal.ANY)
@@ -146,7 +144,7 @@ class TestCallSlot(unittest.TestCase):
         slot1 = self.signal.add(test_func)
         slot2 = self.signal.add(test_func2,
                                 priority=self.signal.priority_higher(slot1))
-        slot3 = self.signal.add(test_defer1,
+        slot3 = self.signal.add(test_defer,
                                 priority=self.signal.priority_higher(slot2))
 
         self.signal.call(signal.ANY)
@@ -163,6 +161,29 @@ class TestCallSlot(unittest.TestCase):
         self.signal.delete(slot1)
         self.signal.delete(slot2)
         self.signal.delete(slot3)
+
+    def test_defer_args_preserved(self):
+        slot1 = self.signal.add(test_func)
+        slot2 = self.signal.add(test_func2,
+                                priority=self.signal.priority_higher(slot1))
+        slot3 = self.signal.add(test_defer,
+                                priority=self.signal.priority_higher(slot2))
+
+        self.signal.call(signal.ANY, arg="test")
+        self.assertTupleEqual(self.signal._defer.args, ())
+        self.assertDictEqual(self.signal._defer.kwargs, {"arg": "test"})
+        
+    def test_defer_args_modify(self):
+        slot1 = self.signal.add(test_func)
+        slot2 = self.signal.add(test_defer,
+                                priority=self.signal.priority_higher(slot1))
+        slot3 = self.signal.add(test_defer,
+                                priority=self.signal.priority_higher(slot2))
+
+        self.signal.call(signal.ANY, arg="test")
+        self.signal.call(signal.ANY, arg="newtest")
+        self.assertTupleEqual(self.signal._defer.args, ())
+        self.assertDictEqual(self.signal._defer.kwargs, {"arg": "newtest"})
 
 
 if __name__ == '__main__':
