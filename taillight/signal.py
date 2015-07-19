@@ -158,6 +158,9 @@ class Signal:
             else:
                 self.slots = list()
 
+        if name is None:
+            name = "<anonymous>"
+
         self.name = name
 
         self._slots_lock = RLock()  # The GIL shouldn't be relied on!
@@ -653,7 +656,12 @@ class Signal:
 
 class UnsharedSignal(Signal):
     """Like a :py:class:`~taillight.signal.Signal`, but multiple calls with
-    the same name do not return the same signal."""
+    the same name do not return the same signal.
+
+    This works just like an anonymous signal semantically, but can be tagged
+    with a name.
+    
+    """
 
     def __new__(cls, *args, **kwargs):
         return object.__new__(cls)
