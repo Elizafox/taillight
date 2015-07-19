@@ -9,4 +9,18 @@ designed to be lightweight and easy to understand.
 Thread-safety is a priority and therefore everything is carefully designed to
 use mutexes. It should be safe to use Signal instances across threads.
 
-Licensed under the WTFPL. Enjoy.
+## Support
+We can be reached easily at irc.interlinked.me #taillight to answer any
+questions you may have.
+
+Pull requests and patches are always welcomed. Features can be requested via
+the bug tracker.
+
+## License and copyright
+Copyright © 2013-2015 Andrew Wilcox and Elizabeth Myers. All rights reserved.
+
+This work is licensed either under the WTFPL or LPRAB, at your option (the two
+licenses are equivalent). Terms and conditions can be found at:
+
+        http://www.wtfpl.net/about/
+        http://sam.zoy.org/lprab/
