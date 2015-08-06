@@ -10,7 +10,7 @@ Thread-safety is a priority and therefore everything is carefully designed to
 use mutexes. It should be safe to use Signal instances across threads.
 
 ## Support
-We can be reached easily at irc.interlinked.me #taillight to answer any
+We can be reached easily at irc.interlinked.me #foxkit.us to answer any
 questions you may have.
 
 Pull requests and patches are always welcomed. Features can be requested via
