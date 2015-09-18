@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 setup(name="taillight",
-      version="0.2b3",
+      version="0.2b4",
       description="An implementation of sigs and slots, with priorities.",
       author="Elizabeth Myers",
       author_email="elizabeth@interlinked.me",
