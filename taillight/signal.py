@@ -138,7 +138,7 @@ class Signal:
             return super().__new__(cls)
 
         with Signal._sigcreate_lock:
-            signal = Signal._signals.get(name, super().__new__(cls))
+            signal = cls._signals.get(name, super().__new__(cls))
 
             # This doesn't really hurt if we do it twice.
             cls._signals[name] = signal
