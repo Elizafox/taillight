@@ -46,6 +46,10 @@ class SignalDeferralSetError(SignalException):
     set."""
 
 
+class SignalNotFoundError(SignalException):
+    """The given signal was not found."""
+
+
 class Signal:
     """A signal is an object that keeps a list of functions for calling later.
 
@@ -87,10 +91,14 @@ class Signal:
     This class is thread-safe and all operations may be performed by multiple
     threads at once.
 
-    Like blinker, two signals with the same name will have shared slots. This
-    does have an important implication: ``prio_descend`` cannot be changed
-    once it has been decided for a slot, until all strong references to the
-    signal are freed.
+    Like blinker, two signals with the same name will have shared slots. Weak
+    references are kept around to each signal internally, so you will need to
+    keep a strong reference around to each signal (or use the class
+    :py:class:`~taillight.signal.StrongSignal`).
+
+    Due to the fact that all signals with the same name will share a slot,
+    ``prio_descend`` cannot be changed once it has been decided for a slot,
+    until all strong references to the signal are freed.
 
     However, unlike blinker, all references to functions in the slots are
     strong. The complexity of weak references to methods, and especially
@@ -172,13 +180,13 @@ class Signal:
         self.last_status = None  # Last status of call()
 
         self.prio_descend = prio_descend
-    
+
     def priority_higher(self, *args, boost=1):
         """Return a priority value above the slots specified in the
         arguments.
 
         This respects the value of ``prio_descend``.
-        
+
         :param boost:
             Boost the priority by this amount.
 
@@ -199,10 +207,10 @@ class Signal:
         arguments.
 
         This respects the value of ``prio_descend``.
-        
+
         :param boost:
             Boost the priority by this amount.
-        
+
         """
         if not args:
             args = self.slots
@@ -654,13 +662,44 @@ class Signal:
             self.name, self.prio_descend, self.slots)
 
 
+class StrongSignal(Signal):
+    """Like a :py:class:`~taillight.signal.Signal`, but strong references are
+    kept to the signals.
+
+    This means they will stick around until manually removed.
+    """
+
+    _signals = dict()
+
+    def delete_signal(self, signal):
+        """Delete a signal.
+
+        This function is needed, as strong references are kept around
+        indefinitely, until this function is called to remove the signal.
+
+        If the signal is not found, a
+        :py:class:`~taillight.signal.SignalNotFoundError` exception is raised.
+
+        :warning:
+            Use care when using this function, as it is easy to introduce
+            subtle errors when you have a reference kept around to the
+            original signal, but it's not stored here.
+
+        :param signal:
+            Name of the signal to remove.
+        """
+        try:
+            del self._signals[signal]
+        except ValueError:
+            raise SignalNotFoundError("Signal not found: {}".format(signal))
+
+
 class UnsharedSignal(Signal):
     """Like a :py:class:`~taillight.signal.Signal`, but multiple calls with
     the same name do not return the same signal.
 
     This works just like an anonymous signal semantically, but can be tagged
     with a name.
-    
     """
 
     def __new__(cls, *args, **kwargs):

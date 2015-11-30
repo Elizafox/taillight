@@ -41,6 +41,28 @@ class TestSignalObject(unittest.TestCase):
         self.assertIsNot(signal_b, signal_b2)
         self.assertIsNot(signal_a, signal_b)
 
+    def test_strong(self):
+        signal_a = signal.StrongSignal("a")
+        signal_a.add(lambda x: None)
+
+        # Remove last strong reference
+        del signal_a
+
+        # Signal should remain
+        signal_a = signal.StrongSignal("a")
+        self.assertIsEqual(len(signal_a.slots), 1)
+
+        # Delete
+        del signal_a
+        signal_a.delete_signal("a")
+
+        # Signal should be gone
+        signal_a = signal.StrongSignal("a")
+        self.assertIsEqual(len(signal_a.slots), 0)
+
+        # Clean up
+        signal_a.delete_signal("a")
+
     def test_anonymous_signal(self):
         signal_anon1 = signal.Signal()
         signal_anon2 = signal.Signal()
