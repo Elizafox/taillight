@@ -141,7 +141,7 @@ class Signal:
             signal = Signal._signals.get(name, super().__new__(cls))
 
             # This doesn't really hurt if we do it twice.
-            Signal._signals[name] = signal
+            cls._signals[name] = signal
 
             return signal
 
@@ -672,7 +672,10 @@ class StrongSignal(Signal):
     This means they will stick around until manually removed.
     """
 
+    # Use separate locks than above...
+    _sigcreate_lock = Lock()  # Locking for the below dict
     _signals = dict()
+    _siginit_lock = Lock()  # Locking for calls to __init__
 
     def delete_signal(self, signal):
         """Delete a signal.
