@@ -114,26 +114,17 @@ Taillight supports searching for slots by uid, function, or listener:
 Performance
 -----------
 
-Taillight is primarily optimised for fast execution of slots, at the cost of
-insertion (since priority must be maintained). Execution of slots is O(n),
-where n is the number of slots on the signal. Later optimisations may be added
-to limit the cost of specific listeners to only the number of slots listening
-on that listener.
+Taillight is primarily optimised for fast execution of slots. Speed of
+insertion is important, but is somewhat suboptimal compared to Blinker, since
+priority must be maintained. Execution of slots is always O(n), where n is the
+number of slots on the signal.
 
-Slot insertion and deletion are more complicated. The worst case O(n) insert
-on the list only happens if an insertion happens at the head (lower priority
-items in the default Signal priority mode), but incurs very little penalty
-from the bisection algorithim. On the other hand, if insertion happens at the
-tail (higher priority in the default Signal priority mode), the O(log n)
-bisection algorithim penalty dominates; insertions at the tail are O(1). When
-the list is unprioritised, most insertions will be O(log n).
+Slot insertion and deletion are more complicated. Where possible, a deque is
+used instead of a queue, leading to improved insertion performance. The
+bisection algorithim is O(log n), but actual insertion performance will vary,
+depending on if lists or deques are in use. In reality, insertion and deletion
+are only a factor if thousands of slots are in use.
 
-At some point in the future we may transition to a deque (which will improve
-performance at the head at the expense of insertion performance at the middle
-of the list), but presently the standard deque container does not support an
-insert method.
-
-In the meantime, the performance penalty should only be important if you are
-making use of thousands of slots.
-
+Later optimisations may be added to limit the cost of specific listeners to
+only the number of slots listening on that listener.
 
