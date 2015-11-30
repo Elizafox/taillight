@@ -52,8 +52,9 @@ class TestSignalObject(unittest.TestCase):
         signal_a = signal.StrongSignal("a")
         self.assertEqual(len(signal_a), 1)
 
-        # Try a deletion; slot should be gone
-        signal_a.delete_signal("a")
+        # Try a deletion; signal should be gone from cache
+        signal.StrongSignal.delete_signal("a")
+        signal_a = signal.StrongSignal("a")  # New instance
         self.assertEqual(len(signal_a), 0)
 
         # Clean up

@@ -677,7 +677,8 @@ class StrongSignal(Signal):
     _signals = dict()
     _siginit_lock = Lock()  # Locking for calls to __init__
 
-    def delete_signal(self, signal):
+    @classmethod
+    def delete_signal(cls, signal):
         """Delete a signal.
 
         This function is needed, as strong references are kept around
@@ -695,7 +696,7 @@ class StrongSignal(Signal):
             Name of the signal to remove.
         """
         try:
-            del self._signals[signal]
+            del cls._signals[signal]
         except ValueError:
             raise SignalNotFoundError("Signal not found: {}".format(signal))
 
