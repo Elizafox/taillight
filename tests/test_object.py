@@ -28,8 +28,8 @@ class TestSignalObject(unittest.TestCase):
         # This shouldn't wipe out the previous functions
         signal_a2 = signal.Signal("a")
 
-        self.assertListEqual(signal_a_slots, signal_a2.slots)
-        self.assertListEqual(signal_a.slots, signal_a2.slots)  # Subtle!
+        self.assertSequenceEqual(signal_a_slots, signal_a2.slots,
+                                 signal._SlotType)
 
     def test_unshared(self):
         signal_a = signal.UnsharedSignal("a")
