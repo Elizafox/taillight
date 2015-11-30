@@ -14,7 +14,9 @@ class TestAddSlot(unittest.TestCase):
         slot1 = self.signal.add(function1)
         slot2 = self.signal.add(function2)
 
-        self.assertListEqual(self.signal.slots, [slot1, slot2])
+        self.assertSequenceEqual(self.signal.slots,
+                                 signal._SlotType((slot1, slot2)),
+                                 signal._SlotType)
 
     def test_add_decorate(self):
         function1 = lambda x: None
@@ -24,7 +26,9 @@ class TestAddSlot(unittest.TestCase):
         slot1 = self.signal.add_wraps()(function1)
         slot2 = self.signal.add_wraps()(function2)
 
-        self.assertListEqual(self.signal.slots, [slot1, slot2])
+        self.assertSequenceEqual(self.signal.slots,
+                                 signal._SlotType((slot1, slot2)),
+                                 signal._SlotType)
 
 
 if __name__ == '__main__':
