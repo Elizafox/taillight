@@ -15,7 +15,7 @@ except ImportError:
     asyncio = None
 
 from bisect import insort_left, insort_right
-from collections import namedtuple
+from collections import deque, namedtuple
 from collections.abc import Iterable
 from operator import attrgetter
 from threading import Lock, RLock
@@ -23,6 +23,11 @@ from weakref import WeakValueDictionary
 
 from taillight import ANY, TaillightException
 from taillight.slot import Slot, SlotNotFoundError
+
+
+# Detect if we should use a deque instead of a list for improved insertion
+# performance
+_SlotType = deque if hasattr(deque, "insert") else list
 
 
 class SignalException(TaillightException):
@@ -111,7 +116,6 @@ class Signal:
 
     :ivar last_status:
         The results of the last invocation of call/call_async.
-
     """
 
     STATUS_DONE = 0
@@ -164,7 +168,7 @@ class Signal:
             if hasattr(self, "slots"):
                 return
             else:
-                self.slots = list()
+                self.slots = _SlotType()
 
         if name is None:
             name = "<anonymous>"
@@ -449,7 +453,6 @@ class Signal:
 
         :param sender:
             The sender on this call.
-
         """
         with self._slots_lock:
             # Use reverse iterator if prio_descend is False (ascending order)
@@ -464,7 +467,6 @@ class Signal:
 
         This function should only be directly used if you need to manually
         unset the arguments before resuming a deferred call.
-
         """
         if (args, kwargs) is (None, None):
             # Unset args
@@ -589,7 +591,6 @@ class Signal:
 
             :returns:
                 A list of return values from the callbacks.
-
             """
 
             ret = []
@@ -648,7 +649,6 @@ class Signal:
                 This method requires asyncio to be made available. If it is
                 unavailable, no fallback is provided (it wouldn't make any
                 sense).
-
             """
             with self._slots_lock:
                 if self._defer is None:
