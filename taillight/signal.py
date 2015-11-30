@@ -687,7 +687,7 @@ class StrongSignal(Signal):
         If the signal is not found, a
         :py:class:`~taillight.signal.SignalNotFoundError` exception is raised.
 
-        :warning:
+        .. warning::
             Use care when using this function, as it is easy to introduce
             subtle errors when you have a reference kept around to the
             original signal, but it's not stored here.
