@@ -657,6 +657,9 @@ class Signal:
                 ret = yield from self.call_async(sender)
                 return ret
 
+    def __len__(self):
+        return len(self.slots)
+
     def __repr__(self):
         return "Signal(name={}, prio_descend={}, slots={})".format(
             self.name, self.prio_descend, self.slots)
@@ -692,6 +695,10 @@ class StrongSignal(Signal):
             del self._signals[signal]
         except ValueError:
             raise SignalNotFoundError("Signal not found: {}".format(signal))
+
+    def __repr__(self):
+        return "StrongSignal(name={}, prio_descend={}, slots={})".format(
+            self.name, self.prio_descend, self.slots)
 
 
 class UnsharedSignal(Signal):
