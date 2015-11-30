@@ -50,7 +50,7 @@ class TestSignalObject(unittest.TestCase):
 
         # Signal should remain
         signal_a = signal.StrongSignal("a")
-        self.assertIsEqual(len(signal_a.slots), 1)
+        self.assertEqual(len(signal_a.slots), 1)
 
         # Delete
         del signal_a
@@ -58,7 +58,7 @@ class TestSignalObject(unittest.TestCase):
 
         # Signal should be gone
         signal_a = signal.StrongSignal("a")
-        self.assertIsEqual(len(signal_a.slots), 0)
+        self.assertEqual(len(signal_a.slots), 0)
 
         # Clean up
         signal_a.delete_signal("a")
