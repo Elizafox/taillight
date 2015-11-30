@@ -667,9 +667,11 @@ class Signal:
 
 class StrongSignal(Signal):
     """Like a :py:class:`~taillight.signal.Signal`, but strong references are
-    kept to the signals.
+    kept to the signals (so you don't have to keep a reference around).
 
-    This means they will stick around until manually removed.
+    Signals will stick around (and all StrongSignals instantiated with the
+    same name will return the same signal) until removed with
+    :py:class:`~taillight.signal.StrongSignal.delete_signal`.
     """
 
     # Use separate locks than above...
