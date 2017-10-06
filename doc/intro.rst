@@ -114,17 +114,16 @@ Taillight supports searching for slots by uid, function, or listener:
 Performance
 -----------
 
-Taillight is primarily optimised for fast execution of slots. Speed of
-insertion is important, but is somewhat suboptimal compared to Blinker, since
-priority must be maintained. Execution of slots is always O(n), where n is the
-number of slots on the signal.
+Taillight is primarily optimised for fast execution of slots, as execution is
+assumed to take place far more often than insertions. Speed of insertion is
+decent, but is somewhat suboptimal compared to Blinker, since the order of a
+priority list must be maintained. Execution of slots is always O(n), where n
+is the number of slots on the signal.
 
-Slot insertion and deletion are more complicated. Where possible, a deque is
-used instead of a queue, leading to improved insertion performance. The
-bisection algorithim is O(log n), but actual insertion performance will vary,
-depending on if lists or deques are in use. In reality, insertion and deletion
-are only a factor if thousands of slots are in use.
-
-Later optimisations may be added to limit the cost of specific listeners to
-only the number of slots listening on that listener.
+Slot insertion and deletion are more complicated. In Python 3.5 and above, a
+deque is used instead of a queue, leading to improved insertion performance.
+The bisection algorithim is O(log n), but actual insertion performance will
+vary, depending on if lists or deques are in use (deques will be faster). In
+reality, insertion and deletion are only a factor if thousands of slots are
+in use.
 

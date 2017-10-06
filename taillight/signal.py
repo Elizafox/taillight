@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright © 2015 Elizabeth Myers. All rights reserved.
+# Copyright © 2017 Elizabeth Myers. All rights reserved.
 # This file is part of the taillight project. See LICENSE in the root
 # directory for licensing information.
 
@@ -7,13 +7,7 @@
 
 from warnings import warn
 
-try:
-    import asyncio
-except ImportError:
-    warn("Could not import asyncio, Signal.call_async will not work!",
-         ImportWarning)
-    asyncio = None
-
+import asyncio
 from bisect import insort_left, insort_right
 from collections import deque, namedtuple
 from collections.abc import Iterable

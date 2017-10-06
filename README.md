@@ -17,7 +17,7 @@ Pull requests and patches are always welcomed. Features can be requested via
 the bug tracker.
 
 ## License and copyright
-Copyright © 2013-2015 Andrew Wilcox and Elizabeth Myers. All rights reserved.
+Copyright © 2013-2017 Andrew Wilcox and Elizabeth Myers. All rights reserved.
 
 This work is licensed either under the WTFPL or LPRAB, at your option (the two
 licenses are equivalent). Terms and conditions can be found at:
