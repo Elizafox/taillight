@@ -5,7 +5,12 @@ python:
   - "3.5"
   - "3.6"
   - "3.7"
+before_install:
+  - git clone https://github.com/TravisToolbox/pycodestyle-travis.git
 install:
   - "pip install tox-travis"
   - "pip install ."
-script: tox
+  - ./pycodestyle-travis/install.sh
+script:
+  - tox
+  - ./pycodestyle-travis/scan.sh
