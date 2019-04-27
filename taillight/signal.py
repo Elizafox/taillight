@@ -48,6 +48,11 @@ class SignalDeferralSetError(SignalError):
     set."""
 
 
+class SignalDeferralSenderError(SignalError):
+    """Raised if the operation cannot complete because the sender is
+    incorrect."""
+
+
 class SignalNotFoundError(SignalError):
     """The given signal was not found."""
 
@@ -75,6 +80,8 @@ class Signal:
     call to :py:meth:`~taillight.signal.Signal.reset_defer` resets the
     signal's deferred state; however, the calls will not pick up where they
     left off, and will restart from the beginning.
+
+    Only one listener may be deferred at a time.
 
     By default, the slots are ordered by lowest priority first (0, 1, 2...).
     This is in line with the Unix style of priorities, and is rather intuitive
@@ -132,7 +139,7 @@ class Signal:
     """The normal priority point - this does not change even if
     ``prio_descend`` is in effect."""
 
-    _DeferType = namedtuple("_DeferType", "iterator args kwargs")
+    _DeferType = namedtuple("_DeferType", "iterator sender args kwargs")
 
     _sigcreate_lock = Lock()  # Locking for the below dict
     _signals = WeakValueDictionary()
@@ -482,7 +489,10 @@ class Signal:
             if kwargs is None:
                 kwargs = self._defer.kwargs
 
-            self._defer = self._DeferType(self._defer.iterator, args, kwargs)
+            iterator = self._defer.iterator
+            sender = self._defer.sender
+
+            self._defer = self._DeferType(iterator, sender, args, kwargs)
 
     # pylint: disable=inconsistent-return-statements
     def resume(self, sender):
@@ -537,6 +547,10 @@ class Signal:
                 slots = self.yield_slots(sender)
             else:
                 # XXX ignores sender
+                if sender is not None and sender != self._defer.sender:
+                    raise SignalDeferralSenderError("deferred signal sender "
+                                                    "unexpectedly changed")
+
                 slots = self._defer.iterator
 
                 if args or kwargs:
@@ -555,7 +569,7 @@ class Signal:
                     break
                 except SignalDefer:
                     self.last_status = self.STATUS_DEFER
-                    self._defer = self._DeferType(slots, args, kwargs)
+                    self._defer = self._DeferType(slots, sender, args, kwargs)
                     return ret
 
             self.reset_defer()
@@ -603,7 +617,12 @@ class Signal:
                 if self._defer is None:
                     slots = self.yield_slots(sender)
                 else:
-                    # XXX ignores sender
+                    # FIXME: allow multiple pending deferrals
+                    if sender is not None and sender != self._defer.sender:
+                        raise SignalDeferralSenderError("deferred signal "
+                                                        "sender unexpectedly "
+                                                        "changed")
+
                     slots = self._defer.iterator
 
                     if args or kwargs:
@@ -626,7 +645,8 @@ class Signal:
                         break
                     except SignalDefer:
                         self.last_status = self.STATUS_DEFER
-                        self._defer = self._DeferType(slots, args, kwargs)
+                        self._defer = self._DeferType(slots, sender, args,
+                                                      kwargs)
                         return ret
 
                 self.reset_defer()
