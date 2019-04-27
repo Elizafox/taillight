@@ -29,6 +29,7 @@ class Slot:
 
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(self, signal, priority, uid, function, listener):
         """Initalise the Slot object.
 
@@ -61,7 +62,7 @@ class Slot:
         return self.function(caller, *args, **kwargs)
 
     def __hash__(self):
-        h = hash((self.priority, self.uid, self.function, self.listener))
+        return hash((self.priority, self.uid, self.function, self.listener))
 
     def __repr__(self):
         return "Slot(priority={}, uid={}, function={}, listener={})".format(
