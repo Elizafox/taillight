@@ -62,7 +62,8 @@ class Slot:
         return self.function(caller, *args, **kwargs)
 
     def __hash__(self):
-        return hash((self.priority, self.uid, self.function, self.listener))
+        return hash((self.signal, self.priority, self.uid, self.function,
+                     self.listener))
 
     def __repr__(self):
         return "Slot(priority={}, uid={}, function={}, listener={})".format(
