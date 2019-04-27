@@ -27,11 +27,15 @@ class SignalException(TaillightException):
     """The base for all signal exceptions."""
 
 
-class SignalStop(SignalException):
+class SignalControl(SignalException):
+    """The base for all signal control exceptions."""
+
+
+class SignalStop(SignalControl):
     """The exception raised when a signal needs to be stopped."""
 
 
-class SignalDefer(SignalException):
+class SignalDefer(SignalControl):
     """The exception raised when a signal needs to be deferred."""
 
 
@@ -39,12 +43,12 @@ class SignalError(SignalException):
     """The base exception for signal errors."""
 
 
-class SignalDeferralSetError(SignalException):
+class SignalDeferralSetError(SignalError):
     """Raised if an operation cannot complete because a deferral point is
     set."""
 
 
-class SignalNotFoundError(SignalException):
+class SignalNotFoundError(SignalError):
     """The given signal was not found."""
 
 
