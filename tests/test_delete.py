@@ -35,5 +35,6 @@ class TestDeleteSlot(unittest.TestCase):
         with self.assertRaises(SlotNotFoundError):
             self.signal.find_uid(slot2.uid)
 
+
 if __name__ == '__main__':
     unittest.main()

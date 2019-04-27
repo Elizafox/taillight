@@ -25,11 +25,9 @@ if asyncio is not None:
         global x
         x += 1
 
-
     def function_1(sender):
         global y
         y += 1
-
 
     @asyncio.coroutine
     def coroutine_2(sender):

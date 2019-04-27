@@ -172,7 +172,7 @@ class TestCallSlot(unittest.TestCase):
         self.signal.call(signal.ANY, arg="test")
         self.assertTupleEqual(self.signal._defer.args, ())
         self.assertDictEqual(self.signal._defer.kwargs, {"arg": "test"})
-        
+
     def test_defer_args_modify(self):
         slot1 = self.signal.add(test_func)
         slot2 = self.signal.add(test_defer,
