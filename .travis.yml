@@ -1,3 +1,4 @@
+env: SKIP_INTERPRETER=true
 dist: xenial
 language: python
 python:
