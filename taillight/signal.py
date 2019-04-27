@@ -301,7 +301,7 @@ class Signal:
             Priority of the slot, which determines its call order.
 
         :param listener:
-            The sender this slot listens for.
+            The sender this slot listens for. This must be a hashable object.
 
         :returns:
             A :py:class:`~taillight.slot.Slot` object that can be used to
