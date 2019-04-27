@@ -5,10 +5,8 @@
 
 "This module contains the Signal class and exceptions related to signals."
 
-from warnings import warn
-
 import asyncio
-from bisect import insort_left, insort_right
+from bisect import insort_right
 from collections import deque, namedtuple
 from collections.abc import Iterable
 from operator import attrgetter
@@ -21,6 +19,7 @@ from taillight.slot import Slot, SlotNotFoundError
 
 # Detect if we should use a deque instead of a list for improved insertion
 # performance
+# pylint: disable=invalid-name
 _SlotType = deque if hasattr(deque, "insert") else list
 
 
@@ -49,6 +48,7 @@ class SignalNotFoundError(SignalException):
     """The given signal was not found."""
 
 
+# pylint: disable=too-many-instance-attributes
 class Signal:
     """A signal is an object that keeps a list of functions for calling later.
 
@@ -112,6 +112,9 @@ class Signal:
         The results of the last invocation of call/call_async.
     """
 
+    # TODO: in a future version, we will move these constants to their own
+    # enum.
+
     STATUS_DONE = 0
     """All events executed during last invocation of call/call_async"""
 
@@ -131,6 +134,7 @@ class Signal:
     _signals = WeakValueDictionary()
     _siginit_lock = Lock()  # Locking for calls to __init__
 
+    # pylint: disable=unused-argument
     def __new__(cls, name=None, prio_descend=True):
         if name is None:
             return super().__new__(cls)
@@ -159,9 +163,7 @@ class Signal:
         with Signal._siginit_lock:
             # __new__ will result in the __init__ method being called, so
             # ensure we're not completely reset.
-            if hasattr(self, "slots"):
-                return
-            else:
+            if not hasattr(self, "slots"):
                 self.slots = _SlotType()
 
         if name is None:
@@ -196,9 +198,9 @@ class Signal:
         if self.prio_descend:
             # Lower numbers = higher priority
             return attr(min(args, key=attr)) - boost
-        else:
-            # Higher numbers = higher priority
-            return attr(max(args, key=attr)) + boost
+
+        # Higher numbers = higher priority
+        return attr(max(args, key=attr)) + boost
 
     def priority_lower(self, *args, boost=1):
         """Return a priority value below the slots specified in the
@@ -217,9 +219,9 @@ class Signal:
         if self.prio_descend:
             # Higher numbers = lower priority
             return attr(max(args, key=attr)) + boost
-        else:
-            # Lower numbers = lower priority
-            return attr(min(args, key=attr)) - boost
+
+        # Lower numbers = lower priority
+        return attr(min(args, key=attr)) - boost
 
     def find_function(self, function):
         """Find the given :py:class:`~taillight.slot.Slot` instance(s), given
@@ -239,9 +241,9 @@ class Signal:
 
         if ret:
             return ret
-        else:
-            raise SlotNotFoundError("Function not found: {}".format(
-                repr(function)))
+
+        raise SlotNotFoundError("Function not found: {}".format(
+            repr(function)))
 
     def find_uid(self, uid):
         """Find the given :py:class:`~taillight.slot.Slot` instance(s), given
@@ -277,9 +279,9 @@ class Signal:
 
         if ret:
             return ret
-        else:
-            raise SlotNotFoundError("Listener not found: {}".format(
-                repr(listener)))
+
+        raise SlotNotFoundError("Listener not found: {}".format(
+            repr(listener)))
 
     def __contains__(self, slot):
         return slot in self.slots
@@ -343,11 +345,11 @@ class Signal:
 
         return decorator
 
-    def delete(self, slot):
+    def delete(self, target):
         """Delete a slot from the signal.
 
-        :param slot:
-            The :py:class:`~taillight.slot.Slot` object to delete.
+        :param target:
+            The :py:class:`~taillight.slot.Slot` object(s) to delete.
 
         """
         with self._slots_lock:
@@ -356,11 +358,10 @@ class Signal:
                 raise SignalDeferralSetError("Cannot delete due to deferral "
                                              "point being set")
 
-            if isinstance(slot, Slot):
-                self.slots.remove(slot)
-            elif isinstance(slot, Iterable):
-                slots = slot
-                for slot in slots:
+            if isinstance(target, Slot):
+                self.slots.remove(target)
+            elif isinstance(target, Iterable):
+                for slot in target:
                     if not isinstance(slot, Slot):
                         raise TypeError("Expected Slot, got {}".format(
                             type(slot).__name__))
@@ -368,7 +369,7 @@ class Signal:
                     self.delete(slot)
             else:
                 raise TypeError("Expected Slot or Iterable, got {}".format(
-                    type(slot).__name__))
+                    type(target).__name__))
 
     def delete_function(self, function):
         """Delete a function from the signal.
@@ -462,7 +463,7 @@ class Signal:
         This function should only be directly used if you need to manually
         unset the arguments before resuming a deferred call.
         """
-        if (args, kwargs) is (None, None):
+        if args is None and kwargs is None:
             # Unset args
             args = ()
             kwargs = {}
@@ -479,6 +480,7 @@ class Signal:
 
             self._defer = self._DeferType(self._defer.iterator, args, kwargs)
 
+    # pylint: disable=inconsistent-return-statements
     def resume(self, sender):
         """Resume a deferred call.
 
@@ -544,10 +546,10 @@ class Signal:
                 # Run the slot
                 try:
                     ret.append(slot(sender, *args, **kwargs))
-                except SignalStop as e:
+                except SignalStop:
                     self.last_status = self.STATUS_STOP
                     break
-                except SignalDefer as e:
+                except SignalDefer:
                     self.last_status = self.STATUS_DEFER
                     self._defer = self._DeferType(slots, args, kwargs)
                     return ret
@@ -615,10 +617,10 @@ class Signal:
                             s_ret = yield from s_ret
 
                         ret.append(s_ret)
-                    except SignalStop as e:
+                    except SignalStop:
                         self.last_status = self.STATUS_STOP
                         break
-                    except SignalDefer as e:
+                    except SignalDefer:
                         self.last_status = self.STATUS_DEFER
                         self._defer = self._DeferType(slots, args, kwargs)
                         return ret
@@ -627,6 +629,7 @@ class Signal:
 
             return ret
 
+        # pylint: disable=inconsistent-return-statements
         @asyncio.coroutine
         def resume_async(self, sender):
             """Resume a deferred asynchronous call.
@@ -709,8 +712,10 @@ class UnsharedSignal(Signal):
     with a name.
     """
 
+    # We can use the default implementation
+    # pylint: disable=arguments-differ
     def __new__(cls, *args, **kwargs):
-        return object.__new__(cls)
+        return object.__new__(cls, *args, **kwargs)
 
     def __repr__(self):
         return "UnsharedSignal(name={}, prio_descend={}, slots={})".format(
