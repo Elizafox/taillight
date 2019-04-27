@@ -713,9 +713,9 @@ class UnsharedSignal(Signal):
     """
 
     # We can use the default implementation
-    # pylint: disable=arguments-differ
+    # pylint: disable=arguments-differ,unused-argument
     def __new__(cls, *args, **kwargs):
-        return object.__new__(cls, *args, **kwargs)
+        return object.__new__(cls)
 
     def __repr__(self):
         return "UnsharedSignal(name={}, prio_descend={}, slots={})".format(

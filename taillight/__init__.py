@@ -9,7 +9,7 @@ and aliases for two important classes: :py:class:`~taillight.signal.Signal`,
 and :py:class:`~taillight.slot.Slot`."""
 
 
-# pylint: disable=cyclic-import, wrong-import-position
+# pylint: disable=cyclic-import, wrong-import-position,invalid-name
 
 
 __all__ = ["signal", "slot"]
