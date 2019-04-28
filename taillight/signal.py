@@ -6,6 +6,7 @@
 "This module contains the Signal class and exceptions related to signals."
 
 import asyncio
+from enum import Enum, IntEnum, auto
 from bisect import insort_right
 from collections import deque, namedtuple
 from collections.abc import Iterable
@@ -57,9 +58,31 @@ class SignalNotFoundError(SignalError):
     """The given signal was not found."""
 
 
+class SignalState(Enum):
+    """Constants for the state of signals."""
+
+    STATUS_DONE = auto()
+    """All events executed during last invocation of call/call_async"""
+
+    STATUS_STOP = auto()
+    """Events were terminated during last invocation of call/call_async"""
+
+    STATUS_DEFER = auto()
+    """Events were paused during last invocation of call/call_async"""
+
+
+class SignalPriority(IntEnum):
+    """Constants for signal priority."""
+
+    PRIORITY_NORMAL = 0
+    """The normal priority point - this does not change even if
+    ``prio_descend`` is in effect."""
+
+
 # pylint: disable=too-many-instance-attributes
 class Signal:
-    """A signal is an object that keeps a list of functions for calling later.
+    """A signal is an object that keeps a list of functions for calling later
+    based on events they listen for.
 
     These functions are referred to as slots. Each slot in taillight has
     several attributes: a priority, a UID (a monotonically increasing number
@@ -123,21 +146,6 @@ class Signal:
         The results of the last invocation of call/call_async.
     """
 
-    # TODO: in a future version, we will move these constants to their own
-    # enum.
-
-    STATUS_DONE = 0
-    """All events executed during last invocation of call/call_async"""
-
-    STATUS_STOP = 1
-    """Events were terminated during last invocation of call/call_async"""
-
-    STATUS_DEFER = 2
-    """Events were paused during last invocation of call/call_async"""
-
-    PRIORITY_NORMAL = 0
-    """The normal priority point - this does not change even if
-    ``prio_descend`` is in effect."""
 
     _DeferType = namedtuple("_DeferType", "iterator sender args kwargs")
 
@@ -297,7 +305,8 @@ class Signal:
     def __contains__(self, slot):
         return slot in self.slots
 
-    def add(self, function=None, priority=PRIORITY_NORMAL, listener=ANY):
+    def add(self, function=None, priority=SignalPriority.PRIORITY_NORMAL,
+            listener=ANY):
         """Add a given slot function to the signal with a given priority.
 
         :param function:
@@ -540,7 +549,7 @@ class Signal:
         """
         ret = []
 
-        self.last_status = self.STATUS_DONE
+        self.last_status = SignalStatus.STATUS_DONE
 
         with self._slots_lock:
             if self._defer is None:
@@ -564,10 +573,10 @@ class Signal:
                 try:
                     ret.append(slot(sender, *args, **kwargs))
                 except SignalStop:
-                    self.last_status = self.STATUS_STOP
+                    self.last_status = SignalStatus.STATUS_STOP
                     break
                 except SignalDefer:
-                    self.last_status = self.STATUS_DEFER
+                    self.last_status = SignalStatus.STATUS_DEFER
                     self._defer = self._DeferType(slots, sender, args, kwargs)
                     return ret
 
@@ -610,7 +619,7 @@ class Signal:
             slot_args = args
             slot_kwargs = kwargs
 
-            self.last_status = self.STATUS_DONE
+            self.last_status = SignalStatus.STATUS_DONE
 
             with self._slots_lock:
                 if self._defer is None:
@@ -640,10 +649,10 @@ class Signal:
 
                         ret.append(s_ret)
                     except SignalStop:
-                        self.last_status = self.STATUS_STOP
+                        self.last_status = SignalStatus.STATUS_STOP
                         break
                     except SignalDefer:
-                        self.last_status = self.STATUS_DEFER
+                        self.last_status = SignalStatus.STATUS_DEFER
                         self._defer = self._DeferType(slots, sender, args,
                                                       kwargs)
                         return ret
