@@ -546,7 +546,6 @@ class Signal:
             if self._defer is None:
                 slots = self.yield_slots(sender)
             else:
-                # XXX ignores sender
                 if sender is not None and sender != self._defer.sender:
                     raise SignalDeferralSenderError("deferred signal sender "
                                                     "unexpectedly changed")
