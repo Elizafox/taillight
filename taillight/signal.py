@@ -343,7 +343,7 @@ class Signal:
 
         return slot
 
-    def add_wraps(self, priority=PRIORITY_NORMAL, listener=ANY):
+    def add_wraps(self, priority=SignalPriority.PRIORITY_NORMAL, listener=ANY):
         """Similar to :py:meth:`~taillight.signal.Signal.add`, but
         is for use as a decorator.
 
