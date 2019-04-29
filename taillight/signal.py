@@ -58,7 +58,7 @@ class SignalNotFoundError(SignalError):
     """The given signal was not found."""
 
 
-class SignalState(Enum):
+class SignalStatus(Enum):
     """Constants for the state of signals."""
 
     STATUS_DONE = auto()

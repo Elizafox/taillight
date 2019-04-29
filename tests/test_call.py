@@ -69,7 +69,7 @@ class TestCallSlot(unittest.TestCase):
 
         self.signal.call(signal.ANY)
         self.assertEqual(self.signal.last_status,
-                         signal.SignalStauts.STATUS_DONE)
+                         signal.SignalStatus.STATUS_DONE)
         self.assertEqual(x, 1)
         self.assertEqual(y, 1)
 
