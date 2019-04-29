@@ -6,7 +6,7 @@
 "This module contains the Signal class and exceptions related to signals."
 
 import asyncio
-from enum import Enum, IntEnum, auto
+from enum import Enum, IntEnum
 from bisect import insort_right
 from collections import deque, namedtuple
 from collections.abc import Iterable
@@ -61,13 +61,13 @@ class SignalNotFoundError(SignalError):
 class SignalStatus(Enum):
     """Constants for the state of signals."""
 
-    STATUS_DONE = auto()
+    STATUS_DONE = 1
     """All events executed during last invocation of call/call_async"""
 
-    STATUS_STOP = auto()
+    STATUS_STOP = 2
     """Events were terminated during last invocation of call/call_async"""
 
-    STATUS_DEFER = auto()
+    STATUS_DEFER = 3
     """Events were paused during last invocation of call/call_async"""
 
 
