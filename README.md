@@ -1,6 +1,9 @@
 # taillight
 
 [![Build Status](https://travis-ci.org/Elizafox/taillight.svg?branch=master)](https://travis-ci.org/Elizafox/taillight)
+[![Downloads per month](https://img.shields.io/pypi/dm/taillight.svg)](https://pypi.org/project/taillight/)
+[![Python versions](https://img.shields.io/pypi/pyversions/taillight.svg)](https://pypi.org/project/taillight/)
+[![PyPI version](https://img.shields.io/pypi/v/taillight.svg)](https://pypi.org/project/taillight/)
 
 Taillight is a signal/slots system similar in concept to
 [Blinker](https://github.com/jek/blinker), but supporting priorities and is
