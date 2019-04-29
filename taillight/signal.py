@@ -146,7 +146,6 @@ class Signal:
         The results of the last invocation of call/call_async.
     """
 
-
     _DeferType = namedtuple("_DeferType", "iterator sender args kwargs")
 
     _sigcreate_lock = Lock()  # Locking for the below dict
