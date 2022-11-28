@@ -20,8 +20,7 @@ z = 0
 
 
 if asyncio is not None:
-    @asyncio.coroutine
-    def coroutine_1(sender):
+    async def coroutine_1(sender):
         global x
         x += 1
 
@@ -29,10 +28,9 @@ if asyncio is not None:
         global y
         y += 1
 
-    @asyncio.coroutine
-    def coroutine_2(sender):
+    async def coroutine_2(sender):
         global z
-        yield from asyncio.sleep(0.01)
+        await asyncio.sleep(0.01)
         z += 1
 
 
