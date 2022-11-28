@@ -52,7 +52,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'taillight'
-copyright = '2015-2019, Elizabeth Myers'
+copyright = '2015-2022, Elizabeth Myers'
 author = 'Elizabeth Myers'
 
 # The version info for the project you're documenting, acts as replacement for

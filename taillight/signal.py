@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright © 2017-2019 Elizabeth Myers. All rights reserved.
+# Copyright © 2017-2022 Elizabeth Myers. All rights reserved.
 # This file is part of the taillight project. See LICENSE in the root
 # directory for licensing information.
 

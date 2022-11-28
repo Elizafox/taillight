@@ -8,7 +8,7 @@ setup(name="taillight",
       author="Elizabeth Myers",
       author_email="elizabeth@interlinked.me",
       url="http://github.com/Elizafox/taillight",
-      packages=find_packages(exclude=["build", "contrib", "docs", "tests*"]),
+      packages=find_packages(exclude=["build", "contrib", "doc", "tests*"]),
       classifiers=[
           "Development Status :: 4 - Beta",
           "Intended Audience :: Developers",
