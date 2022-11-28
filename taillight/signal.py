@@ -19,10 +19,8 @@ from taillight import ANY, TaillightException
 from taillight.slot import Slot, SlotNotFoundError
 
 
-# Detect if we should use a deque instead of a list for improved insertion
-# performance
 # pylint: disable=invalid-name
-_SlotType = deque if hasattr(deque, "insert") else list
+_SlotType = deque
 
 
 class SignalException(TaillightException):
