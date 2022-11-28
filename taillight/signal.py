@@ -10,6 +10,7 @@ from enum import Enum, IntEnum
 from bisect import insort_right
 from collections import deque, namedtuple
 from collections.abc import Iterable
+from inspect import iscoroutinefunction
 from operator import attrgetter
 from threading import Lock, RLock
 from weakref import WeakValueDictionary
@@ -514,7 +515,7 @@ class Signal:
         shares all the semantics of ``call``.
 
         .. note::
-            If any slot functions are asyncio coroutines, use
+            If any slot functions are awaitables, use
             :py:meth:`~taillight.signal.Signal.resume_async` instead.
 
         """
@@ -536,7 +537,7 @@ class Signal:
         :py:class:`~taillight.signal.SignalDefer`.
 
         .. note::
-            If any slot functions are asyncio coroutines, use
+            If any slot functions are awaitables, use
             :py:meth:`~taillight.signal.Signal.call_async` instead.
 
         :param sender:
@@ -583,107 +584,103 @@ class Signal:
 
         return ret
 
-    if asyncio is not None:
-        @asyncio.coroutine
-        def call_async(self, sender, *args, **kwargs):
-            """Call the signal's slots asynchronously.
+    async def call_async(self, sender, *args, **kwargs):
+        """Call the signal's slots asynchronously.
 
-            All functions which are really coroutines are yielded from;
-            otherwise, they are simply called.
+        All functions which are really coroutines are yielded from;
+        otherwise, they are simply called.
 
-            This function is an asyncio coroutine - in Python 3.5, this is
-            subject to become an awaitable.
+        This function is an awaitable.
 
-            All arguments and keywords are passed to the slots when run. If a
-            callback is resuming, the arguments from last time are deleted if
-            any arguments are passed in, otherwise they're kept.
+        All arguments and keywords are passed to the slots when run. If a
+        callback is resuming, the arguments from last time are deleted if
+        any arguments are passed in, otherwise they're kept.
 
-            Exceptions are propagated to the caller, except for
-            :py:class:`~taillight.signal.SignalStop` and
-            :py:class:`~taillight.signal.SignalDefer`.
+        Exceptions are propagated to the caller, except for
+        :py:class:`~taillight.signal.SignalStop` and
+        :py:class:`~taillight.signal.SignalDefer`.
 
-            .. warning::
-                This method requires asyncio to be made available. If it is
-                unavailable, no fallback is provided (it wouldn't make any
-                sense).
+        .. warning::
+            This method requires asyncio to be made available. If it is
+            unavailable, no fallback is provided (it wouldn't make any
+            sense).
 
-            :param sender:
-                The sender on this call.
+        :param sender:
+            The sender on this call.
 
-            :returns:
-                A list of return values from the callbacks.
-            """
+        :returns:
+            A list of return values from the callbacks.
+        """
 
-            ret = []
-            slot_args = args
-            slot_kwargs = kwargs
+        ret = []
+        slot_args = args
+        slot_kwargs = kwargs
 
-            self.last_status = SignalStatus.STATUS_DONE
+        self.last_status = SignalStatus.STATUS_DONE
 
-            with self._slots_lock:
-                if self._defer is None:
-                    slots = self.yield_slots(sender)
-                else:
-                    # FIXME: allow multiple pending deferrals
-                    if sender is not None and sender != self._defer.sender:
-                        raise SignalDeferralSenderError("deferred signal "
-                                                        "sender unexpectedly "
-                                                        "changed")
+        with self._slots_lock:
+            if self._defer is None:
+                slots = self.yield_slots(sender)
+            else:
+                # FIXME: allow multiple pending deferrals
+                if sender is not None and sender != self._defer.sender:
+                    raise SignalDeferralSenderError("deferred signal "
+                                                    "sender unexpectedly "
+                                                    "changed")
 
-                    slots = self._defer.iterator
+                slots = self._defer.iterator
 
-                    if args or kwargs:
-                        # Reset args
-                        self.defer_set_args(args, kwargs)
+                if args or kwargs:
+                    # Reset args
+                    self.defer_set_args(args, kwargs)
 
-                    slot_args = self._defer.args
-                    slot_kwargs = self._defer.kwargs
+                slot_args = self._defer.args
+                slot_kwargs = self._defer.kwargs
 
-                for slot in slots:
-                    # Run the slot
-                    try:
-                        s_ret = slot(sender, *slot_args, **slot_kwargs)
-                        if asyncio.iscoroutinefunction(slot.function):
-                            s_ret = yield from s_ret
+            for slot in slots:
+                # Run the slot
+                try:
+                    s_ret = slot(sender, *slot_args, **slot_kwargs)
+                    if iscoroutinefunction(slot.function):
+                        s_ret = yield from s_ret
 
-                        ret.append(s_ret)
-                    except SignalStop:
-                        self.last_status = SignalStatus.STATUS_STOP
-                        break
-                    except SignalDefer:
-                        self.last_status = SignalStatus.STATUS_DEFER
-                        self._defer = self._DeferType(slots, sender, args,
-                                                      kwargs)
-                        return ret
+                    ret.append(s_ret)
+                except SignalStop:
+                    self.last_status = SignalStatus.STATUS_STOP
+                    break
+                except SignalDefer:
+                    self.last_status = SignalStatus.STATUS_DEFER
+                    self._defer = self._DeferType(slots, sender, args,
+                                                  kwargs)
+                    return ret
 
-                self.reset_defer()
+            self.reset_defer()
 
+        return ret
+
+    # pylint: disable=inconsistent-return-statements
+    async def resume_async(self, sender):
+        """Resume a deferred asynchronous call.
+
+        If the signal is not in a deferred state, this returns None; else
+        it returns the results of the remaining calls.
+
+        This is a wrapper around
+        :py:meth:`~taillight.signal.Signal.call_async`, but it also
+        includes checking if the signal is deferred. Otherwise, it shares
+        all the semantics of ``call_async``.
+
+        .. warning::
+            This method requires asyncio to be made available. If it is
+            unavailable, no fallback is provided (it wouldn't make any
+            sense).
+        """
+        with self._slots_lock:
+            if self._defer is None:
+                return
+
+            ret = yield from self.call_async(sender)
             return ret
-
-        # pylint: disable=inconsistent-return-statements
-        @asyncio.coroutine
-        def resume_async(self, sender):
-            """Resume a deferred asynchronous call.
-
-            If the signal is not in a deferred state, this returns None; else
-            it returns the results of the remaining calls.
-
-            This is a wrapper around
-            :py:meth:`~taillight.signal.Signal.call_async`, but it also
-            includes checking if the signal is deferred. Otherwise, it shares
-            all the semantics of ``call_async``.
-
-            .. warning::
-                This method requires asyncio to be made available. If it is
-                unavailable, no fallback is provided (it wouldn't make any
-                sense).
-            """
-            with self._slots_lock:
-                if self._defer is None:
-                    return
-
-                ret = yield from self.call_async(sender)
-                return ret
 
     def __len__(self):
         return len(self.slots)
