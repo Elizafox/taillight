@@ -600,11 +600,6 @@ class Signal:
         :py:class:`~taillight.signal.SignalStop` and
         :py:class:`~taillight.signal.SignalDefer`.
 
-        .. warning::
-            This method requires asyncio to be made available. If it is
-            unavailable, no fallback is provided (it wouldn't make any
-            sense).
-
         :param sender:
             The sender on this call.
 
@@ -669,11 +664,6 @@ class Signal:
         :py:meth:`~taillight.signal.Signal.call_async`, but it also
         includes checking if the signal is deferred. Otherwise, it shares
         all the semantics of ``call_async``.
-
-        .. warning::
-            This method requires asyncio to be made available. If it is
-            unavailable, no fallback is provided (it wouldn't make any
-            sense).
         """
         with self._slots_lock:
             if self._defer is None:
