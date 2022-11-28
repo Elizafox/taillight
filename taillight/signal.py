@@ -635,7 +635,7 @@ class Signal:
                 try:
                     s_ret = slot(sender, *slot_args, **slot_kwargs)
                     if iscoroutinefunction(slot.function):
-                        s_ret = yield from s_ret
+                        s_ret = await s_ret
 
                     ret.append(s_ret)
                 except SignalStop:
@@ -667,7 +667,7 @@ class Signal:
             if self._defer is None:
                 return
 
-            ret = yield from self.call_async(sender)
+            ret = await self.call_async(sender)
             return ret
 
     def __len__(self):
