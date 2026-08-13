@@ -13,7 +13,17 @@ from __future__ import annotations
 # pylint: disable=cyclic-import, wrong-import-position,invalid-name
 
 
-__all__ = ["ANY", "Signal", "Slot", "TaillightException", "signal", "slot"]
+__all__ = [
+    "ANY",
+    "CallResult",
+    "PriorityOrder",
+    "Signal",
+    "SignalResult",
+    "Slot",
+    "TaillightException",
+    "signal",
+    "slot",
+]
 
 
 class TaillightException(Exception):
@@ -42,5 +52,5 @@ ANY: _AnyObject = _AnyObject()
 
 
 # Important aliases
-from taillight.signal import Signal
+from taillight.signal import CallResult, PriorityOrder, Signal, SignalResult
 from taillight.slot import Slot

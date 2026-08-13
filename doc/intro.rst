@@ -17,8 +17,8 @@ A simple example
   
   s = Signal("test")
    
-  def method(caller):
-      print("I was called from: {!r}".format(caller))
+  def method(sender):
+      print("I was called from: {!r}".format(sender))
   
   s.add(method)
   s.call("testcall")
@@ -37,13 +37,13 @@ Signals support adding slots in priority order:
   
   s = Signal("test")
   
-  def first(caller):
+  def first(sender):
       print("Called first!")
   
-  def second(caller):
+  def second(sender):
       print("Called second!")
   
-  def third(caller):
+  def third(sender):
       print("Called third")
   
   s.add(second, priority=2)
@@ -53,9 +53,10 @@ Signals support adding slots in priority order:
 
 As illustrated by this example, priorities, by default, are run lowest first.
 At first this may seem counterintuitive; but consider that counting usually
-starts from 0 or 1. This is how the lists are ordered by default. By passing a
-``prio_descend=False`` to :class:`~taillight.signal.Signal`, the order can be
-reversed.
+starts from 0 or 1. This is how the lists are ordered by default. Pass
+``priority_order=PriorityOrder.DESCENDING`` to
+:class:`~taillight.signal.Signal` to run higher numeric priorities first. The
+historical ``prio_descend`` argument remains as a compatibility alias.
 
 Also note in the example that second and third have the same priority; when
 two items have the same priority, the one added later is called second. This
@@ -66,10 +67,28 @@ predictable order, regardless of whether or not a priority was specified.
 Listeners
 ---------
 
-Signals support listening for specific events. The default listener is the
-special sentinel ANY, which means they will be called on all events, no matter
-what. Conversely, if they have a more specific listener, they will not be
-called unless the sender is set to ANY, or the sender matches the listener.
+The object passed to ``call()`` or ``emit()`` is the *sender*. A slot's
+``listener`` is its optional sender filter. The default listener is the
+special sentinel ``ANY``, which accepts every sender. A more specific listener
+accepts calls where the sender is ``ANY`` or matches that listener.
+
+Invocation snapshots
+--------------------
+
+Each invocation takes a snapshot of its matching slots before calling them.
+Connecting or disconnecting slots while an invocation is active affects later
+invocations, not the one already in progress.
+
+Typed signals
+-------------
+
+Signals are generic in their resolved callback result type::
+
+  from taillight import Signal
+
+  changed: Signal[int] = Signal("changed")
+  changed.connect(lambda sender: 42)
+  result = changed.emit("example")
 
 Example:
 
@@ -79,8 +98,8 @@ Example:
   
   s = Signal("test")
   
-  def listener(caller):
-      print("listener got: {!r}".format(caller))
+  def listener(sender):
+      print("listener got: {!r}".format(sender))
   
   s.add(listener, listener="x")
   s.add(listener, listener="y")
@@ -101,7 +120,7 @@ Taillight supports searching for slots by uid, function, or listener:
   
   s = Signal("test")
   
-  def function(caller):
+  def function(sender):
       print("called")
   
   slot_1 = s.add(function, listener="x")

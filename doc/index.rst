@@ -9,6 +9,7 @@ priorities.
    :caption: Contents
 
    intro
+   release-notes
    modules
 
 Indices

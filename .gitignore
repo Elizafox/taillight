@@ -55,6 +55,9 @@ coverage.xml
 doc/_build/
 
 # Modern Python tooling
+.mypy_cache/
+.pytest_cache/
+.pyright/
 .ruff_cache/
 .venv/
 

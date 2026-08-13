@@ -110,12 +110,39 @@ class TestCallSlot(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(results, [[], []])
+        self.assertTrue(all(
+            result.status is signal.SignalStatus.STATUS_DEFER
+            for result in results
+        ))
         self.assertEqual(self.signal.pending_deferrals, 2)
         resumed = {
             (await self.signal.resume_async("same sender"))[0],
             (await self.signal.resume_async("same sender"))[0],
         }
         self.assertEqual(resumed, {1, 2})
+
+    async def test_cancelled_resume_preserves_deferred_frame(self):
+        waiting = asyncio.Event()
+
+        def defer(sender):
+            raise signal.SignalDefer
+
+        async def wait(sender):
+            waiting.set()
+            await asyncio.Event().wait()
+
+        self.signal.add(defer)
+        self.signal.add(wait)
+        self.signal.call("sender")
+
+        task = asyncio.create_task(self.signal.resume_async("sender"))
+        await waiting.wait()
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+
+        self.assertTrue(self.signal.is_deferred)
+        self.signal.reset_defers()
 
 
 if __name__ == '__main__':

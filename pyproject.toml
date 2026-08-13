@@ -42,7 +42,7 @@ include = ["taillight*"]
 taillight = ["py.typed"]
 
 [tool.mypy]
-files = ["taillight"]
+files = ["taillight", "typing_tests"]
 python_version = "3.10"
 strict = true
 

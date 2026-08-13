@@ -62,13 +62,17 @@ class Slot(Generic[ReturnT]):
             Function called when the signal is run.
 
         :param listener:
-            The listener this object listens on.
+            The sender filter for this slot.
 
         """
         update_wrapper(self, self.function)
 
-    def __call__(self, caller: object, *args: Any, **kwargs: Any) -> ReturnT:
-        return self.function(caller, *args, **kwargs)
+    def __call__(self, sender: object, *args: Any, **kwargs: Any) -> ReturnT:
+        return self.function(sender, *args, **kwargs)
+
+    def disconnect(self) -> None:
+        """Remove this slot from its signal."""
+        self.signal.delete(self)
 
     def __hash__(self) -> int:
         return hash((self.signal, self.priority, self.uid, self.function,

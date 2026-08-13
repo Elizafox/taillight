@@ -26,6 +26,8 @@ autodoc_default_options = {
     "show-inheritance": True,
     "undoc-members": True,
 }
+autodoc_typehints = "description"
+autodoc_typehints_format = "short"
 
 html_theme = "alabaster"
 html_title = f"taillight {release} documentation"

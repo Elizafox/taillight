@@ -1,4 +1,5 @@
 import unittest
+from threading import Event, Thread
 
 from taillight import signal
 
@@ -89,7 +90,8 @@ class TestCallSlot(unittest.TestCase):
         self.signal.call(signal.ANY)
 
         # Deferral point set
-        self.assertIsNotNone(self.signal._defer)
+        self.assertTrue(self.signal.is_deferred)
+        self.assertEqual(self.signal.pending_deferrals, 1)
         self.assertEqual(self.signal.last_status,
                          signal.SignalStatus.STATUS_DEFER)
         self.assertEqual(x, 0)
@@ -99,7 +101,7 @@ class TestCallSlot(unittest.TestCase):
         self.signal.resume(signal.ANY)
 
         # Should have completed the chain
-        self.assertIsNone(self.signal._defer)
+        self.assertFalse(self.signal.is_deferred)
         self.assertEqual(self.signal.last_status,
                          signal.SignalStatus.STATUS_DONE)
         self.assertEqual(x, 1)
@@ -114,7 +116,7 @@ class TestCallSlot(unittest.TestCase):
         self.signal.call(signal.ANY, 123, 'arf')
 
         # Should be deferred..
-        self.assertIsNotNone(self.signal._defer)
+        self.assertTrue(self.signal.is_deferred)
 
         # but the first var should be set properly...
         self.assertEqual(number, 123)
@@ -139,11 +141,42 @@ class TestCallSlot(unittest.TestCase):
         self.signal.call(signal.ANY)
 
         # Deferral point should NOT be set
-        self.assertIsNone(self.signal._defer)
+        self.assertFalse(self.signal.is_deferred)
         self.assertEqual(self.signal.last_status,
                          signal.SignalStatus.STATUS_STOP)
         self.assertEqual(x, 0)
         self.assertEqual(y, 0)
+
+    def test_result_carries_invocation_status(self):
+        self.signal.add(test_defer)
+
+        result = self.signal.call("sender")
+
+        self.assertIsInstance(result, signal.SignalResult)
+        self.assertEqual(result.status, signal.SignalStatus.STATUS_DEFER)
+
+    def test_active_call_uses_slot_snapshot(self):
+        entered = Event()
+        release = Event()
+
+        def wait(sender):
+            entered.set()
+            release.wait(timeout=2)
+            return "original"
+
+        self.signal.add(wait)
+        results = []
+        thread = Thread(target=lambda: results.extend(self.signal.call("sender")))
+        thread.start()
+        self.assertTrue(entered.wait(timeout=2))
+
+        self.signal.add(lambda sender: "new")
+        release.set()
+        thread.join(timeout=2)
+
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(results, ["original"])
+        self.assertEqual(self.signal.call("sender"), ["original", "new"])
 
     def test_defer_ensure_raises(self):
         slot1 = self.signal.add(test_func)
@@ -171,27 +204,27 @@ class TestCallSlot(unittest.TestCase):
         self.signal.delete(slot3)
 
     def test_defer_args_preserved(self):
-        slot1 = self.signal.add(test_func)
-        slot2 = self.signal.add(test_func2,
-                                priority=self.signal.priority_higher(slot1))
-        self.signal.add(test_defer,
-                                priority=self.signal.priority_higher(slot2))
+        def capture(sender, arg=None):
+            return arg
+
+        capture_slot = self.signal.add(capture)
+        self.signal.add(
+            test_defer, priority=self.signal.priority_higher(capture_slot))
 
         self.signal.call(signal.ANY, arg="test")
-        self.assertTupleEqual(self.signal._defer.args, ())
-        self.assertDictEqual(self.signal._defer.kwargs, {"arg": "test"})
+        self.assertEqual(self.signal.resume(), ["test"])
 
     def test_defer_args_modify(self):
-        slot1 = self.signal.add(test_func)
-        slot2 = self.signal.add(test_defer,
-                                priority=self.signal.priority_higher(slot1))
-        self.signal.add(test_defer,
-                                priority=self.signal.priority_higher(slot2))
+        def capture(sender, arg=None):
+            return arg
+
+        capture_slot = self.signal.add(capture)
+        self.signal.add(
+            test_defer, priority=self.signal.priority_higher(capture_slot))
 
         self.signal.call(signal.ANY, arg="test")
         self.signal.defer_set_args(kwargs={"arg": "newtest"})
-        self.assertTupleEqual(self.signal._defer.args, ())
-        self.assertDictEqual(self.signal._defer.kwargs, {"arg": "newtest"})
+        self.assertEqual(self.signal.resume(), ["newtest"])
 
     def test_multiple_deferrals_resume_in_lifo_order(self):
         def defer(sender, value):
@@ -219,7 +252,9 @@ class TestCallSlot(unittest.TestCase):
         self.signal.call("second")
         self.signal.reset_defer()
 
-        self.assertEqual(self.signal._defer.sender, "first")
+        self.assertEqual(self.signal.pending_deferrals, 1)
+        self.assertEqual(self.signal.resume("first"), [])
+        self.assertFalse(self.signal.is_deferred)
 
     def test_reset_defers_discards_every_frame(self):
         self.signal.add(lambda sender: (_ for _ in ()).throw(signal.SignalDefer))
@@ -245,6 +280,52 @@ class TestCallSlot(unittest.TestCase):
             self.signal.resume()
 
         self.assertEqual(self.signal.pending_deferrals, 1)
+
+    def test_callback_exception_propagates(self):
+        error = RuntimeError("callback failed")
+
+        def fail(sender):
+            raise error
+
+        self.signal.add(fail)
+
+        with self.assertRaises(RuntimeError) as raised:
+            self.signal.call("sender")
+
+        self.assertIs(raised.exception, error)
+        self.assertFalse(self.signal.is_deferred)
+
+    def test_nested_invocation_has_independent_result(self):
+        nested = False
+
+        def callback(sender):
+            nonlocal nested
+            if not nested:
+                nested = True
+                return self.signal.call("inner")[0]
+            return sender
+
+        self.signal.add(callback)
+
+        self.assertEqual(self.signal.call("outer"), ["inner"])
+
+    def test_connection_conveniences(self):
+        slot = self.signal.connect(lambda sender: sender)
+        self.assertEqual(self.signal.emit("connected"), ["connected"])
+        slot.disconnect()
+        self.assertEqual(self.signal.emit("disconnected"), [])
+
+        with self.signal.connection(lambda sender: sender) as temporary:
+            self.assertIn(temporary, self.signal)
+            self.assertEqual(self.signal.emit("temporary"), ["temporary"])
+
+        self.assertNotIn(temporary, self.signal)
+
+    def test_call_result_is_immutable(self):
+        result = self.signal.call("sender")
+
+        with self.assertRaises((AttributeError, TypeError)):
+            result.status = signal.SignalStatus.STATUS_STOP
 
 
 if __name__ == '__main__':
