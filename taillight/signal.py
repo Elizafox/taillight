@@ -20,6 +20,22 @@ from taillight.slot import Slot, SlotNotFoundError
 _SlotType = deque
 
 
+class _SignalMeta(type):
+    """Construct and cache named signals without publishing partial objects."""
+
+    def __call__(cls, name=None, prio_descend=True):
+        if name is None or not cls._share_by_name:
+            return super().__call__(name, prio_descend)
+
+        with cls._sigcreate_lock:
+            signal = cls._signals.get(name)
+            if signal is None:
+                signal = super().__call__(name, prio_descend)
+                cls._signals[name] = signal
+
+            return signal
+
+
 class SignalException(TaillightException):
     """The base for all signal exceptions."""
 
@@ -76,7 +92,7 @@ class SignalPriority(IntEnum):
 
 
 # pylint: disable=too-many-instance-attributes
-class Signal:
+class Signal(metaclass=_SignalMeta):
     """A signal is an object that keeps a list of functions for calling later
     based on events they listen for.
 
@@ -144,22 +160,9 @@ class Signal:
 
     _DeferType = namedtuple("_DeferType", "iterator sender args kwargs")
 
+    _share_by_name = True
     _sigcreate_lock = Lock()  # Locking for the below dict
     _signals = WeakValueDictionary()
-    _siginit_lock = Lock()  # Locking for calls to __init__
-
-    # pylint: disable=unused-argument
-    def __new__(cls, name=None, prio_descend=True):
-        if name is None:
-            return super().__new__(cls)
-
-        with Signal._sigcreate_lock:
-            signal = cls._signals.get(name, super().__new__(cls))
-
-            # This doesn't really hurt if we do it twice.
-            cls._signals[name] = signal
-
-            return signal
 
     def __init__(self, name=None, prio_descend=True):
         """Create the Signal object.
@@ -174,13 +177,7 @@ class Signal:
             setting prio_descend to ``False``.
 
         """
-        with Signal._siginit_lock:
-            # __new__ will result in the __init__ method being called, so
-            # ensure an existing named signal is not reset.
-            if hasattr(self, "slots"):
-                return
-
-            self.slots = _SlotType()
+        self.slots = _SlotType()
 
         if name is None:
             name = "<anonymous>"
@@ -689,7 +686,6 @@ class StrongSignal(Signal):
     # Use separate locks than above...
     _sigcreate_lock = Lock()  # Locking for the below dict
     _signals = dict()
-    _siginit_lock = Lock()  # Locking for calls to __init__
 
     @classmethod
     def delete_signal(cls, signal):
@@ -709,11 +705,12 @@ class StrongSignal(Signal):
         :param signal:
             Name of the signal to remove.
         """
-        try:
-            del cls._signals[signal]
-        except KeyError as error:
-            raise SignalNotFoundError(
-                f"Signal not found: {signal}") from error
+        with cls._sigcreate_lock:
+            try:
+                del cls._signals[signal]
+            except KeyError as error:
+                raise SignalNotFoundError(
+                    f"Signal not found: {signal}") from error
 
     def __repr__(self):
         return (
@@ -730,10 +727,7 @@ class UnsharedSignal(Signal):
     with a name.
     """
 
-    # We can use the default implementation
-    # pylint: disable=arguments-differ,unused-argument
-    def __new__(cls, *args, **kwargs):
-        return object.__new__(cls)
+    _share_by_name = False
 
     def __repr__(self):
         return (

@@ -1,4 +1,5 @@
 import unittest
+
 from taillight import signal
 
 x = 0
@@ -82,7 +83,7 @@ class TestCallSlot(unittest.TestCase):
         slot1 = self.signal.add(test_func)
         slot2 = self.signal.add(test_func2,
                                 priority=self.signal.priority_higher(slot1))
-        slot3 = self.signal.add(test_defer,
+        self.signal.add(test_defer,
                                 priority=self.signal.priority_higher(slot2))
 
         self.signal.call(signal.ANY)
@@ -107,7 +108,7 @@ class TestCallSlot(unittest.TestCase):
     def test_defer_arg_save(self):
         global number, fox
         slot1 = self.signal.add(test_defer_args2)
-        slot2 = self.signal.add(test_defer_args1,
+        self.signal.add(test_defer_args1,
                                 priority=self.signal.priority_higher(slot1))
 
         self.signal.call(signal.ANY, 123, 'arf')
@@ -132,7 +133,7 @@ class TestCallSlot(unittest.TestCase):
         slot1 = self.signal.add(test_func)
         slot2 = self.signal.add(test_func2,
                                 priority=self.signal.priority_higher(slot1))
-        slot3 = self.signal.add(test_stop,
+        self.signal.add(test_stop,
                                 priority=self.signal.priority_higher(slot2))
 
         self.signal.call(signal.ANY)
@@ -170,7 +171,7 @@ class TestCallSlot(unittest.TestCase):
         slot1 = self.signal.add(test_func)
         slot2 = self.signal.add(test_func2,
                                 priority=self.signal.priority_higher(slot1))
-        slot3 = self.signal.add(test_defer,
+        self.signal.add(test_defer,
                                 priority=self.signal.priority_higher(slot2))
 
         self.signal.call(signal.ANY, arg="test")
@@ -181,7 +182,7 @@ class TestCallSlot(unittest.TestCase):
         slot1 = self.signal.add(test_func)
         slot2 = self.signal.add(test_defer,
                                 priority=self.signal.priority_higher(slot1))
-        slot3 = self.signal.add(test_defer,
+        self.signal.add(test_defer,
                                 priority=self.signal.priority_higher(slot2))
 
         self.signal.call(signal.ANY, arg="test")

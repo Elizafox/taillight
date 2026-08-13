@@ -1,4 +1,5 @@
 import unittest
+
 from taillight import signal
 from taillight.slot import SlotNotFoundError
 
@@ -9,8 +10,10 @@ class TestDeleteSlot(unittest.TestCase):
         self.signal = signal.Signal()
 
     def test_delete(self):
-        function = lambda x: None
-        function2 = lambda y: None
+        def function(x):
+            return None
+        def function2(y):
+            return None
 
         slot = self.signal.add(function)
         slot2 = self.signal.add(function2)

@@ -1,4 +1,5 @@
 import unittest
+
 from taillight import signal
 
 
@@ -32,7 +33,7 @@ class TestPriority(unittest.TestCase):
         slot1 = self.signal_a.add(lambda x: 2)
         slot2 = self.signal_a.add(lambda x: 1,
                 priority=self.signal_a.priority_higher(slot1))
-        slot3 = self.signal_a.add(lambda x: 0,
+        self.signal_a.add(lambda x: 0,
                 priority=self.signal_a.priority_higher(slot2))
         result = self.signal_a.call(self)
         self.assertListEqual(result, [0, 1, 2])
@@ -41,7 +42,7 @@ class TestPriority(unittest.TestCase):
         slot1 = self.signal_d.add(lambda x: 2)
         slot2 = self.signal_d.add(lambda x: 1,
                 priority=self.signal_d.priority_higher(slot1))
-        slot3 = self.signal_d.add(lambda x: 0,
+        self.signal_d.add(lambda x: 0,
                 priority=self.signal_d.priority_higher(slot2))
         result = self.signal_d.call(self)
         self.assertListEqual(result, [0, 1, 2])

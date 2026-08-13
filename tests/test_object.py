@@ -1,4 +1,6 @@
 import unittest
+from weakref import WeakValueDictionary
+
 from taillight import signal
 
 
@@ -17,8 +19,10 @@ class TestSignalObject(unittest.TestCase):
     def test_singleton_add(self):
         signal_a = signal.Signal("a")
 
-        function1 = lambda x: None
-        function2 = lambda y: None
+        def function1(x):
+            return None
+        def function2(y):
+            return None
 
         signal_a.add(function1)
         signal_a.add(function2)
@@ -41,9 +45,25 @@ class TestSignalObject(unittest.TestCase):
         self.assertGreater(second.uid, first.uid)
 
     def test_singleton_keeps_priority_order(self):
-        signal_a = signal.Signal("priority", prio_descend=False)
+        _signal_a = signal.Signal("priority", prio_descend=False)
         signal_a2 = signal.Signal("priority")
 
+        self.assertFalse(signal_a2.prio_descend)
+
+    def test_singleton_initializes_only_once(self):
+        class CountingSignal(signal.Signal):
+            _signals = WeakValueDictionary()
+            initializations = 0
+
+            def __init__(self, name=None, prio_descend=True):
+                type(self).initializations += 1
+                super().__init__(name, prio_descend)
+
+        signal_a = CountingSignal("counted", prio_descend=False)
+        signal_a2 = CountingSignal("counted")
+
+        self.assertIs(signal_a, signal_a2)
+        self.assertEqual(CountingSignal.initializations, 1)
         self.assertFalse(signal_a2.prio_descend)
 
     def test_unshared(self):
