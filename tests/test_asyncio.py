@@ -69,6 +69,54 @@ class TestCallSlot(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             await self.signal.resume_async("sender"), ["value"])
 
+    async def test_multiple_calls_defer_independently(self):
+        def defer(sender, value):
+            raise signal.SignalDefer
+
+        def capture(sender, value):
+            return sender, value
+
+        self.signal.add(defer)
+        self.signal.add(capture)
+
+        self.assertEqual(await self.signal.call_async("first", 1), [])
+        self.assertEqual(await self.signal.call_async("second", 2), [])
+        self.assertEqual(
+            await self.signal.resume_async("second"), [("second", 2)])
+        self.assertEqual(
+            await self.signal.resume_async("first"), [("first", 1)])
+
+    async def test_concurrent_calls_keep_separate_frames(self):
+        both_started = asyncio.Event()
+        started = 0
+
+        async def defer(sender, value):
+            nonlocal started
+            started += 1
+            if started == 2:
+                both_started.set()
+            await both_started.wait()
+            raise signal.SignalDefer
+
+        def capture(sender, value):
+            return value
+
+        self.signal.add(defer)
+        self.signal.add(capture)
+
+        results = await asyncio.gather(
+            self.signal.call_async("same sender", 1),
+            self.signal.call_async("same sender", 2),
+        )
+
+        self.assertEqual(results, [[], []])
+        self.assertEqual(self.signal.pending_deferrals, 2)
+        resumed = {
+            (await self.signal.resume_async("same sender"))[0],
+            (await self.signal.resume_async("same sender"))[0],
+        }
+        self.assertEqual(resumed, {1, 2})
+
 
 if __name__ == '__main__':
     unittest.main()

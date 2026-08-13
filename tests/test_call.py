@@ -96,7 +96,7 @@ class TestCallSlot(unittest.TestCase):
         self.assertEqual(y, 0)
 
         # Resume
-        self.signal.call(signal.ANY)
+        self.signal.resume(signal.ANY)
 
         # Should have completed the chain
         self.assertIsNone(self.signal._defer)
@@ -123,7 +123,7 @@ class TestCallSlot(unittest.TestCase):
         self.assertIsNone(fox)
 
         # now resume...
-        self.signal.call(signal.ANY)
+        self.signal.resume(signal.ANY)
 
         # and ensure the other method set the other var
         self.assertEqual(fox, 'arf')
@@ -160,6 +160,9 @@ class TestCallSlot(unittest.TestCase):
         with self.assertRaises(signal.SignalDeferralSetError):
             self.signal.add(lambda x: None)
 
+        with self.assertRaises(signal.SignalDeferralSetError):
+            self.signal.clear()
+
         self.signal.reset_defer()
 
         # These should work now
@@ -186,9 +189,62 @@ class TestCallSlot(unittest.TestCase):
                                 priority=self.signal.priority_higher(slot2))
 
         self.signal.call(signal.ANY, arg="test")
-        self.signal.call(signal.ANY, arg="newtest")
+        self.signal.defer_set_args(kwargs={"arg": "newtest"})
         self.assertTupleEqual(self.signal._defer.args, ())
         self.assertDictEqual(self.signal._defer.kwargs, {"arg": "newtest"})
+
+    def test_multiple_deferrals_resume_in_lifo_order(self):
+        def defer(sender, value):
+            raise signal.SignalDefer
+
+        def capture(sender, value):
+            return sender, value
+
+        self.signal.add(defer)
+        self.signal.add(capture)
+
+        self.assertEqual(self.signal.call("first", 1), [])
+        self.assertEqual(self.signal.call("second", 2), [])
+        with self.assertRaises(signal.SignalDeferralSenderError):
+            self.signal.resume("first")
+
+        self.assertEqual(self.signal.resume("second"), [("second", 2)])
+        self.assertEqual(self.signal.resume("first"), [("first", 1)])
+        self.assertIsNone(self.signal.resume("first"))
+
+    def test_reset_defer_discards_only_top_frame(self):
+        self.signal.add(lambda sender: (_ for _ in ()).throw(signal.SignalDefer))
+
+        self.signal.call("first")
+        self.signal.call("second")
+        self.signal.reset_defer()
+
+        self.assertEqual(self.signal._defer.sender, "first")
+
+    def test_reset_defers_discards_every_frame(self):
+        self.signal.add(lambda sender: (_ for _ in ()).throw(signal.SignalDefer))
+
+        self.signal.call("first")
+        self.signal.call("second")
+        self.signal.reset_defers()
+
+        self.assertEqual(self.signal.pending_deferrals, 0)
+
+    def test_resume_exception_preserves_frame(self):
+        def defer(sender):
+            raise signal.SignalDefer
+
+        def fail(sender):
+            raise RuntimeError("failed")
+
+        self.signal.add(defer)
+        self.signal.add(fail)
+        self.signal.call("sender")
+
+        with self.assertRaises(RuntimeError):
+            self.signal.resume()
+
+        self.assertEqual(self.signal.pending_deferrals, 1)
 
 
 if __name__ == '__main__':

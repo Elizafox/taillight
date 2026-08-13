@@ -112,11 +112,12 @@ class Signal(metaclass=_SignalMeta):
     When the signal is in a deferred state, adding or deleting slots is not
     allowed, as this would lead to inconsistencies in how the new slots should
     be called and how the deleted slots should be handled. However, a simple
-    call to :py:meth:`~taillight.signal.Signal.reset_defer` resets the
-    signal's deferred state; however, the calls will not pick up where they
-    left off, and will restart from the beginning.
+    call to :py:meth:`~taillight.signal.Signal.reset_defer` discards the next
+    deferred call, while :py:meth:`~taillight.signal.Signal.reset_defers`
+    discards all of them.
 
-    Only one listener may be deferred at a time.
+    Multiple calls may be deferred at a time. Deferred calls are resumed in
+    last-in, first-out order.
 
     By default, the slots are ordered by lowest priority first (0, 1, 2...).
     This is in line with the Unix style of priorities, and is rather intuitive
@@ -189,10 +190,21 @@ class Signal(metaclass=_SignalMeta):
         self._uid = 0
         self._uid_lock = Lock()
 
-        self._defer = None  # Used in deferral
+        self._defers = []  # Deferred calls, in resume order
         self.last_status = None  # Last status of call()
 
         self.prio_descend = prio_descend
+
+    @property
+    def _defer(self):
+        """Return the next deferred call, for compatibility with older code."""
+        return self._defers[-1] if self._defers else None
+
+    @property
+    def pending_deferrals(self):
+        """Return the number of calls waiting to be resumed."""
+        with self._slots_lock:
+            return len(self._defers)
 
     def priority_higher(self, *args, boost=1):
         """Return a priority value above the slots specified in the
@@ -326,7 +338,7 @@ class Signal(metaclass=_SignalMeta):
         slot = Slot(self, priority, uid, function, listener)
 
         with self._slots_lock:
-            if self._defer is not None:
+            if self._defers:
                 # Requires lock to avoid racing with call
                 raise SignalDeferralSetError("Cannot add due to deferral "
                                              "point being set")
@@ -365,7 +377,7 @@ class Signal(metaclass=_SignalMeta):
 
         """
         with self._slots_lock:
-            if self._defer is not None:
+            if self._defers:
                 # Requires lock to avoid racing with call
                 raise SignalDeferralSetError("Cannot delete due to deferral "
                                              "point being set")
@@ -402,7 +414,7 @@ class Signal(metaclass=_SignalMeta):
 
         """
         with self._slots_lock:
-            if self._defer is not None:
+            if self._defers:
                 # Requires lock to avoid racing with call
                 raise SignalDeferralSetError("Cannot delete due to deferral "
                                              "point being set")
@@ -417,14 +429,21 @@ class Signal(metaclass=_SignalMeta):
     def clear(self):
         """Clear the slot of all signals."""
         with self._slots_lock:
+            if self._defers:
+                raise SignalDeferralSetError(
+                    "Cannot clear due to deferral point being set")
             self.slots.clear()
 
     def reset_defer(self):
-        """Reset the deferred status of the signal, causing the deferred point
-        to be reset."""
+        """Discard the next deferred call, if one exists."""
         with self._slots_lock:
-            # Requires lock to avoid racing with call
-            self._defer = None
+            if self._defers:
+                self._defers.pop()
+
+    def reset_defers(self):
+        """Discard all deferred calls."""
+        with self._slots_lock:
+            self._defers.clear()
 
     def reset_call(self, sender, *args, **kwargs):
         """Call the signal, running all the slots, but reset the deferred
@@ -448,7 +467,7 @@ class Signal(metaclass=_SignalMeta):
 
         """
         with self._slots_lock:
-            self.reset_defer()
+            self.reset_defers()
             return self.call(sender, *args, **kwargs)
 
     def yield_slots(self, sender):
@@ -480,30 +499,27 @@ class Signal(metaclass=_SignalMeta):
             kwargs = {}
 
         with self._slots_lock:
-            if self._defer is None:
+            if not self._defers:
                 return
 
+            deferred = self._defers[-1]
             if args is None:
-                args = self._defer.args
+                args = deferred.args
 
             if kwargs is None:
-                kwargs = self._defer.kwargs
+                kwargs = deferred.kwargs
 
-            iterator = self._defer.iterator
-            sender = self._defer.sender
-
-            self._defer = self._DeferType(iterator, sender, args, kwargs)
+            self._defers[-1] = deferred._replace(args=args, kwargs=kwargs)
 
     # pylint: disable=inconsistent-return-statements
-    def resume(self, sender):
+    def resume(self, sender=None):
         """Resume a deferred call.
 
         If the signal is not in a deferred state, this returns None; else it
         returns the results of the remaining calls.
 
-        This is a wrapper around :py:meth:`~taillight.signal.Signal.call`, but
-        it also includes checking if the signal is deferred. Otherwise, it
-        shares all the semantics of ``call``.
+        Deferred calls are resumed in last-in, first-out order. ``sender``
+        must match the sender of the next deferred call unless it is ``None``.
 
         .. note::
             If any slot functions are awaitables, use
@@ -511,17 +527,58 @@ class Signal(metaclass=_SignalMeta):
 
         """
         with self._slots_lock:
-            if self._defer is None:
+            if not self._defers:
                 return
 
-            return self.call(sender)
+            deferred = self._take_deferred(sender)
+
+        return self._run(deferred, resumed=True)
+
+    def _new_call(self, sender, args, kwargs):
+        """Create an isolated frame for a new signal invocation."""
+        with self._slots_lock:
+            slots = iter(tuple(self.yield_slots(sender)))
+        return self._DeferType(slots, sender, args, kwargs)
+
+    def _take_deferred(self, sender):
+        """Remove and return the next deferred frame after validating it."""
+        deferred = self._defers[-1]
+        if sender is not None and sender != deferred.sender:
+            raise SignalDeferralSenderError(
+                "deferred signal sender unexpectedly changed")
+        return self._defers.pop()
+
+    def _run(self, deferred, resumed=False):
+        """Run a synchronous invocation frame until completion or deferral."""
+        ret = []
+        self.last_status = SignalStatus.STATUS_DONE
+
+        for slot in deferred.iterator:
+            try:
+                ret.append(slot(
+                    deferred.sender, *deferred.args, **deferred.kwargs))
+            except SignalStop:
+                self.last_status = SignalStatus.STATUS_STOP
+                break
+            except SignalDefer:
+                self.last_status = SignalStatus.STATUS_DEFER
+                with self._slots_lock:
+                    self._defers.append(deferred)
+                break
+            except BaseException:
+                if resumed:
+                    with self._slots_lock:
+                        self._defers.append(deferred)
+                raise
+
+        return ret
 
     def call(self, sender, *args, **kwargs):
         """Call the signal's slots.
 
-        All arguments and keywords are passed to the slots when run. If a
-        callback is resuming, the arguments from last time are deleted if any
-        arguments are passed in, otherwise they're kept.
+        All arguments and keywords are passed to the slots when run. This
+        always starts a new invocation; use
+        :py:meth:`~taillight.signal.Signal.resume` to continue a deferred one.
 
         Exceptions are propagated to the caller, except for
         :py:class:`~taillight.signal.SignalStop` and
@@ -538,42 +595,7 @@ class Signal(metaclass=_SignalMeta):
             A list of return values from the callbacks.
 
         """
-        ret = []
-
-        self.last_status = SignalStatus.STATUS_DONE
-
-        with self._slots_lock:
-            if self._defer is None:
-                slots = self.yield_slots(sender)
-            else:
-                if sender is not None and sender != self._defer.sender:
-                    raise SignalDeferralSenderError("deferred signal sender "
-                                                    "unexpectedly changed")
-
-                slots = self._defer.iterator
-
-                if args or kwargs:
-                    # Reset args
-                    self.defer_set_args(args, kwargs)
-
-                args = self._defer.args
-                kwargs = self._defer.kwargs
-
-            for slot in slots:
-                # Run the slot
-                try:
-                    ret.append(slot(sender, *args, **kwargs))
-                except SignalStop:
-                    self.last_status = SignalStatus.STATUS_STOP
-                    break
-                except SignalDefer:
-                    self.last_status = SignalStatus.STATUS_DEFER
-                    self._defer = self._DeferType(slots, sender, args, kwargs)
-                    return ret
-
-            self.reset_defer()
-
-        return ret
+        return self._run(self._new_call(sender, args, kwargs))
 
     async def call_async(self, sender, *args, **kwargs):
         """Call the signal's slots asynchronously.
@@ -584,9 +606,10 @@ class Signal(metaclass=_SignalMeta):
 
         This function is an awaitable.
 
-        All arguments and keywords are passed to the slots when run. If a
-        callback is resuming, the arguments from last time are deleted if
-        any arguments are passed in, otherwise they're kept.
+        All arguments and keywords are passed to the slots when run. This
+        always starts a new invocation; use
+        :py:meth:`~taillight.signal.Signal.resume_async` to continue a
+        deferred one.
 
         Exceptions are propagated to the caller, except for
         :py:class:`~taillight.signal.SignalStop` and
@@ -599,70 +622,53 @@ class Signal(metaclass=_SignalMeta):
             A list of return values from the callbacks.
         """
 
-        ret = []
-        slot_args = args
-        slot_kwargs = kwargs
+        return await self._run_async(self._new_call(sender, args, kwargs))
 
+    async def _run_async(self, deferred, resumed=False):
+        """Run an asynchronous frame until completion or deferral."""
+        ret = []
         self.last_status = SignalStatus.STATUS_DONE
 
-        with self._slots_lock:
-            if self._defer is None:
-                slots = self.yield_slots(sender)
-            else:
-                # FIXME: allow multiple pending deferrals
-                if sender is not None and sender != self._defer.sender:
-                    raise SignalDeferralSenderError("deferred signal "
-                                                    "sender unexpectedly "
-                                                    "changed")
-
-                slots = self._defer.iterator
-
-                if args or kwargs:
-                    # Reset args
-                    self.defer_set_args(args, kwargs)
-
-                slot_args = self._defer.args
-                slot_kwargs = self._defer.kwargs
-
-            for slot in slots:
-                # Run the slot
-                try:
-                    s_ret = slot(sender, *slot_args, **slot_kwargs)
-                    if isawaitable(s_ret):
-                        s_ret = await s_ret
-
-                    ret.append(s_ret)
-                except SignalStop:
-                    self.last_status = SignalStatus.STATUS_STOP
-                    break
-                except SignalDefer:
-                    self.last_status = SignalStatus.STATUS_DEFER
-                    self._defer = self._DeferType(
-                        slots, sender, slot_args, slot_kwargs)
-                    return ret
-
-            self.reset_defer()
+        for slot in deferred.iterator:
+            try:
+                result = slot(
+                    deferred.sender, *deferred.args, **deferred.kwargs)
+                if isawaitable(result):
+                    result = await result
+                ret.append(result)
+            except SignalStop:
+                self.last_status = SignalStatus.STATUS_STOP
+                break
+            except SignalDefer:
+                self.last_status = SignalStatus.STATUS_DEFER
+                with self._slots_lock:
+                    self._defers.append(deferred)
+                break
+            except BaseException:
+                if resumed:
+                    with self._slots_lock:
+                        self._defers.append(deferred)
+                raise
 
         return ret
 
     # pylint: disable=inconsistent-return-statements
-    async def resume_async(self, sender):
+    async def resume_async(self, sender=None):
         """Resume a deferred asynchronous call.
 
         If the signal is not in a deferred state, this returns None; else
         it returns the results of the remaining calls.
 
-        This is a wrapper around
-        :py:meth:`~taillight.signal.Signal.call_async`, but it also
-        includes checking if the signal is deferred. Otherwise, it shares
-        all the semantics of ``call_async``.
+        Deferred calls are resumed in last-in, first-out order. ``sender``
+        must match the sender of the next deferred call unless it is ``None``.
         """
         with self._slots_lock:
-            if self._defer is None:
+            if not self._defers:
                 return
 
-            ret = await self.call_async(sender)
-            return ret
+            deferred = self._take_deferred(sender)
+
+        return await self._run_async(deferred, resumed=True)
 
     def __len__(self):
         return len(self.slots)
