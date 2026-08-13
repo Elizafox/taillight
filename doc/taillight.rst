@@ -1,17 +1,13 @@
-taillight
-=========
+taillight package
+=================
 
 .. automodule:: taillight
-   :members: TaillightException, ANY
 
-signal
-------
+Submodules
+----------
 
-.. automodule:: taillight.signal
-   :members:
+.. toctree::
+   :maxdepth: 1
 
-slot
-----
-
-.. automodule:: taillight.slot
-   :members:
+   taillight.signal
+   taillight.slot

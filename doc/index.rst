@@ -1,23 +1,19 @@
-.. taillight documentation master file, created by
-   sphinx-quickstart on Wed Jul  8 21:44:09 2015.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+taillight documentation
+=======================
 
-Welcome to taillight's documentation!
-=====================================
-
-Contents:
+Taillight is a lightweight, thread-safe signals and slots library with
+priorities.
 
 .. toctree::
    :maxdepth: 2
+   :caption: Contents
 
    intro
-   taillight
+   modules
 
-Indices and tables
-==================
+Indices
+-------
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

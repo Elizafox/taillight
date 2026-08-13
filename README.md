@@ -22,7 +22,7 @@ the bug tracker.
 
 ## License and copyright
 
-Copyright © 2013-2026 A. Wilcox and Elizabeth Myers. All rights reserved.
+Copyright © 2013-2026 A. Wilcox and Elizabeth Ashford. All rights reserved.
 
 This work is licensed either under the WTFPL or LPRAB, at your option (the two
 licenses are equivalent). Terms and conditions can be found at:

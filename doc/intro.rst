@@ -1,21 +1,21 @@
 Introduction
 ============
 
-Taillight is a signal and slots framework similar in concept to blinker_. The
+Taillight is a signals and slots framework similar in concept to Blinker_. The
 main difference is instead of ``connect`` and ``disconnect`` methods, there
 are ``add`` and ``delete`` methods. There is also the ability to prioritise
 the order in which slots are called.
 
-.. _blinker: https://pythonhosted.org/blinker/
+.. _Blinker: https://blinker.readthedocs.io/
 
 A simple example
 ----------------
 
-.. code:: python
+.. code-block:: python
 
-  from taillight import signal
+  from taillight import Signal
   
-  s = signal.Signal("test")
+  s = Signal("test")
    
   def method(caller):
       print("I was called from: {!r}".format(caller))
@@ -31,11 +31,11 @@ Priorities
 
 Signals support adding slots in priority order:
 
-.. code:: python
+.. code-block:: python
   
-  from taillight import signal
+  from taillight import Signal
   
-  s = signal.Signal("test")
+  s = Signal("test")
   
   def first(caller):
       print("Called first!")
@@ -54,7 +54,8 @@ Signals support adding slots in priority order:
 As illustrated by this example, priorities, by default, are run lowest first.
 At first this may seem counterintuitive; but consider that counting usually
 starts from 0 or 1. This is how the lists are ordered by default. By passing a
-parameter to signal, the behaviour can be altered to go in reverse.
+``prio_descend=False`` to :class:`~taillight.signal.Signal`, the order can be
+reversed.
 
 Also note in the example that second and third have the same priority; when
 two items have the same priority, the one added later is called second. This
@@ -72,11 +73,11 @@ called unless the sender is set to ANY, or the sender matches the listener.
 
 Example:
 
-.. code:: python
+.. code-block:: python
 
-  from taillight import signal, ANY
+  from taillight import ANY, Signal
   
-  s = signal.Signal("test")
+  s = Signal("test")
   
   def listener(caller):
       print("listener got: {!r}".format(caller))
@@ -94,11 +95,11 @@ Searching
 
 Taillight supports searching for slots by uid, function, or listener:
 
-.. code:: python
+.. code-block:: python
   
-  from taillight import signal, ANY
+  from taillight import ANY, Signal
   
-  s = signal.Signal("test")
+  s = Signal("test")
   
   def function(caller):
       print("called")
@@ -120,10 +121,7 @@ decent, but is somewhat suboptimal compared to Blinker, since the order of a
 priority list must be maintained. Execution of slots is always O(n), where n
 is the number of slots on the signal.
 
-Slot insertion and deletion are more complicated. In Python 3.5 and above, a
-deque is used instead of a queue, leading to improved insertion performance.
-The bisection algorithim is O(log n), but actual insertion performance will
-vary, depending on if lists or deques are in use (deques will be faster). In
-reality, insertion and deletion are only a factor if thousands of slots are
-in use.
-
+Slot insertion and deletion are more complicated. Taillight uses bisection to
+find an insertion point in O(log n) time and stores slots in a deque. The
+insertion itself may still require moving elements, so insertion and deletion
+costs become noticeable mainly when a signal contains many slots.
