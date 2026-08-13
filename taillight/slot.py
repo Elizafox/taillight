@@ -1,4 +1,4 @@
-# Copyright © 2017-2026 Elizabeth Ashford. All rights reserved.
+# Copyright © 2017-2026 Elizabeth Ashford.
 # This file is part of the taillight project. See LICENSE in the root
 # directory for licensing information.
 
