@@ -22,7 +22,7 @@ the bug tracker.
 
 ## License and copyright
 
-Copyright © 2013-2026 A. Wilcox and Elizabeth Ashford.
+Copyright © 2013-2026 Anna Wilcox and Elizabeth Ashford.
 
 This is free and unencumbered software released into the public domain under
 [The Unlicense](https://unlicense.org/). See [LICENSE](LICENSE) for details.
