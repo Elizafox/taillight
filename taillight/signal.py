@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
-# Copyright © 2017-2022 Elizabeth Myers. All rights reserved.
+# Copyright © 2017-2026 Elizabeth Ashford. All rights reserved.
 # This file is part of the taillight project. See LICENSE in the root
 # directory for licensing information.
 
 "This module contains the Signal class and exceptions related to signals."
 
-import asyncio
 from enum import Enum, IntEnum
 from bisect import insort_right
 from collections import deque, namedtuple
 from collections.abc import Iterable
-from inspect import iscoroutinefunction
+from inspect import isawaitable
 from operator import attrgetter
 from threading import Lock, RLock
 from weakref import WeakValueDictionary
@@ -585,8 +584,9 @@ class Signal:
     async def call_async(self, sender, *args, **kwargs):
         """Call the signal's slots asynchronously.
 
-        All functions which are really coroutines are yielded from;
-        otherwise, they are simply called.
+        Awaitable return values are awaited; other return values are collected
+        directly. This includes awaitables returned by regular functions and
+        callable objects, not only functions declared with ``async def``.
 
         This function is an awaitable.
 
@@ -634,7 +634,7 @@ class Signal:
                 # Run the slot
                 try:
                     s_ret = slot(sender, *slot_args, **slot_kwargs)
-                    if iscoroutinefunction(slot.function):
+                    if isawaitable(s_ret):
                         s_ret = await s_ret
 
                     ret.append(s_ret)
@@ -643,8 +643,8 @@ class Signal:
                     break
                 except SignalDefer:
                     self.last_status = SignalStatus.STATUS_DEFER
-                    self._defer = self._DeferType(slots, sender, args,
-                                                  kwargs)
+                    self._defer = self._DeferType(
+                        slots, sender, slot_args, slot_kwargs)
                     return ret
 
             self.reset_defer()

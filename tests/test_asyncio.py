@@ -1,84 +1,73 @@
+import asyncio
 import unittest
+
 from taillight import signal
 
-try:
-    import asyncio
-except ImportError:
-    asyncio = None
 
-
-def tearDownModule():
-    if asyncio is not None:
-        loop = asyncio.get_event_loop()
-        loop.stop()
-        loop.close()
-
-
-x = 0
-y = 0
-z = 0
-
-
-if asyncio is not None:
-    async def coroutine_1(sender):
-        global x
-        x += 1
-
-    def function_1(sender):
-        global y
-        y += 1
-
-    async def coroutine_2(sender):
-        global z
-        await asyncio.sleep(0.01)
-        z += 1
-
-
-@unittest.skipIf(asyncio is None, "asyncio not found")
-class TestCallSlot(unittest.TestCase):
+class TestCallSlot(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         self.signal = signal.Signal()
-        self.loop = asyncio.get_event_loop()
 
-    def tearDown(self):
-        global x, y, z
-        x = y = z = 0
+    async def test_async_function(self):
+        async def callback(sender):
+            await asyncio.sleep(0)
+            return sender
 
-    def test_call_wrapped(self):
-        global x
-        slot = self.signal.add(coroutine_1)
+        self.signal.add(callback)
 
-        self.loop.run_until_complete(self.signal.call_async("x"))
+        self.assertEqual(await self.signal.call_async("sender"), ["sender"])
 
-        self.assertEqual(x, 1)
+    async def test_sync_function(self):
+        self.signal.add(lambda sender: sender)
 
-    def test_call_function(self):
-        global x
-        slot = self.signal.add(function_1)
+        self.assertEqual(await self.signal.call_async("sender"), ["sender"])
 
-        self.loop.run_until_complete(self.signal.call_async("y"))
+    async def test_sync_function_returning_awaitable(self):
+        async def result():
+            await asyncio.sleep(0)
+            return 42
 
-        self.assertEqual(y, 1)
+        self.signal.add(lambda sender: result())
 
-    def test_call_yield_from(self):
-        global z
-        slot = self.signal.add(coroutine_2)
+        self.assertEqual(await self.signal.call_async("sender"), [42])
 
-        self.loop.run_until_complete(self.signal.call_async("z"))
+    async def test_async_callable_object(self):
+        class Callback:
+            async def __call__(self, sender):
+                return sender
 
-        self.assertEqual(z, 1)
+        self.signal.add(Callback())
 
-    def test_combine(self):
-        global x, y, z
-        slot = [self.signal.add(function_1), self.signal.add(coroutine_1),
-                self.signal.add(coroutine_2)]
+        self.assertEqual(await self.signal.call_async("sender"), ["sender"])
 
-        self.loop.run_until_complete(self.signal.call_async("xyz"))
+    async def test_mixed_callbacks_preserve_order(self):
+        async def async_callback(sender):
+            await asyncio.sleep(0)
+            return 2
 
-        self.assertEqual(x, 1)
-        self.assertEqual(y, 1)
-        self.assertEqual(z, 1)
+        self.signal.add(lambda sender: 1)
+        self.signal.add(async_callback)
+        self.signal.add(lambda sender: 3)
+
+        self.assertEqual(await self.signal.call_async("sender"), [1, 2, 3])
+
+    async def test_arguments_survive_multiple_deferrals(self):
+        def defer(sender, value):
+            raise signal.SignalDefer
+
+        def capture(sender, value):
+            return value
+
+        self.signal.add(defer)
+        self.signal.add(defer)
+        self.signal.add(capture)
+
+        self.assertEqual(
+            await self.signal.call_async("sender", "value"), [])
+        self.assertEqual(await self.signal.resume_async("sender"), [])
+        self.assertEqual(
+            await self.signal.resume_async("sender"), ["value"])
 
 
 if __name__ == '__main__':
