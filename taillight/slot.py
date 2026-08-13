@@ -4,10 +4,20 @@
 
 """This module contains the Slot class and slot-related exceptions."""
 
+from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from functools import update_wrapper
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from taillight import TaillightException
+
+if TYPE_CHECKING:
+    from taillight.signal import Signal as SignalType
+
+
+ReturnT = TypeVar("ReturnT")
 
 
 class SlotError(TaillightException):
@@ -18,7 +28,8 @@ class SlotNotFoundError(SlotError):
     """Raised when a given slot is not found."""
 
 
-class Slot:
+@dataclass(order=True)
+class Slot(Generic[ReturnT]):
     """A slot in a given signal.
 
     This is also callable, for purposes of enabling decorator usage.
@@ -28,8 +39,13 @@ class Slot:
 
     """
 
-    # pylint: disable=too-many-arguments
-    def __init__(self, signal, priority, uid, function, listener):
+    signal: SignalType[Any] = field(compare=False, repr=False)
+    priority: int
+    uid: int
+    function: Callable[..., ReturnT] = field(compare=False, repr=False)
+    listener: object = field(compare=False, repr=False)
+
+    def __post_init__(self) -> None:
         """Initalise the Slot object.
 
         :param signal:
@@ -49,41 +65,17 @@ class Slot:
             The listener this object listens on.
 
         """
-        self.signal = signal
-        self.priority = priority
-        self.uid = uid
-        self.function = function
-        self.listener = listener
+        update_wrapper(self, self.function)
 
-        update_wrapper(self, function)
-
-    def __call__(self, caller, *args, **kwargs):
+    def __call__(self, caller: object, *args: Any, **kwargs: Any) -> ReturnT:
         return self.function(caller, *args, **kwargs)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.signal, self.priority, self.uid, self.function,
                      self.listener))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"Slot(priority={self.priority}, uid={self.uid}, "
             f"function={self.function}, listener={self.listener})"
         )
-
-    def __lt__(self, other):
-        return (self.priority, self.uid) < (other.priority, other.uid)
-
-    def __le__(self, other):
-        return (self.priority, self.uid) <= (other.priority, other.uid)
-
-    def __gt__(self, other):
-        return (self.priority, self.uid) > (other.priority, other.uid)
-
-    def __ge__(self, other):
-        return (self.priority, self.uid) >= (other.priority, other.uid)
-
-    def __eq__(self, other):
-        return (self.priority, self.uid) == (other.priority, other.uid)
-
-    def __ne__(self, other):
-        return (self.priority, self.uid) != (other.priority, other.uid)

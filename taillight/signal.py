@@ -4,13 +4,16 @@
 
 "This module contains the Signal class and exceptions related to signals."
 
+from __future__ import annotations
+
 from bisect import insort_right
-from collections import deque, namedtuple
-from collections.abc import Iterable
+from collections import deque
+from collections.abc import Awaitable, Callable, Hashable, Iterable, Iterator
+from dataclasses import dataclass, replace
 from enum import Enum, IntEnum
 from inspect import isawaitable
-from operator import attrgetter
 from threading import Lock, RLock
+from typing import Any, Generic, TypeAlias, TypeVar, cast, overload
 from weakref import WeakValueDictionary
 
 from taillight import ANY, TaillightException
@@ -19,19 +22,36 @@ from taillight.slot import Slot, SlotNotFoundError
 # pylint: disable=invalid-name
 _SlotType = deque
 
+ResultT = TypeVar("ResultT")
+CallbackResult: TypeAlias = ResultT | Awaitable[ResultT]
+Callback: TypeAlias = Callable[..., CallbackResult[ResultT]]
+
+
+@dataclass(frozen=True)
+class _DeferredCall(Generic[ResultT]):
+    """The state required to resume one deferred invocation."""
+
+    iterator: Iterator[Slot[CallbackResult[ResultT]]]
+    sender: object
+    args: tuple[Any, ...]
+    kwargs: dict[str, Any]
+
 
 class _SignalMeta(type):
     """Construct and cache named signals without publishing partial objects."""
 
-    def __call__(cls, name=None, prio_descend=True):
-        if name is None or not cls._share_by_name:
+    def __call__(
+        cls, name: Hashable | None = None, prio_descend: bool = True
+    ) -> Any:
+        signal_cls = cast(Any, cls)
+        if name is None or not signal_cls._share_by_name:
             return super().__call__(name, prio_descend)
 
-        with cls._sigcreate_lock:
-            signal = cls._signals.get(name)
+        with signal_cls._sigcreate_lock:
+            signal = signal_cls._signals.get(name)
             if signal is None:
                 signal = super().__call__(name, prio_descend)
-                cls._signals[name] = signal
+                signal_cls._signals[name] = signal
 
             return signal
 
@@ -92,7 +112,7 @@ class SignalPriority(IntEnum):
 
 
 # pylint: disable=too-many-instance-attributes
-class Signal(metaclass=_SignalMeta):
+class Signal(Generic[ResultT], metaclass=_SignalMeta):
     """A signal is an object that keeps a list of functions for calling later
     based on events they listen for.
 
@@ -159,13 +179,13 @@ class Signal(metaclass=_SignalMeta):
         The results of the last invocation of call/call_async.
     """
 
-    _DeferType = namedtuple("_DeferType", "iterator sender args kwargs")
-
     _share_by_name = True
     _sigcreate_lock = Lock()  # Locking for the below dict
-    _signals = WeakValueDictionary()
+    _signals: Any = WeakValueDictionary()
 
-    def __init__(self, name=None, prio_descend=True):
+    def __init__(
+        self, name: Hashable | None = None, prio_descend: bool = True
+    ) -> None:
         """Create the Signal object.
 
         :param name:
@@ -178,7 +198,7 @@ class Signal(metaclass=_SignalMeta):
             setting prio_descend to ``False``.
 
         """
-        self.slots = _SlotType()
+        self.slots: deque[Slot[CallbackResult[ResultT]]] = _SlotType()
 
         if name is None:
             name = "<anonymous>"
@@ -190,23 +210,25 @@ class Signal(metaclass=_SignalMeta):
         self._uid = 0
         self._uid_lock = Lock()
 
-        self._defers = []  # Deferred calls, in resume order
-        self.last_status = None  # Last status of call()
+        self._defers: list[_DeferredCall[ResultT]] = []
+        self.last_status: SignalStatus | None = None
 
         self.prio_descend = prio_descend
 
     @property
-    def _defer(self):
+    def _defer(self) -> _DeferredCall[ResultT] | None:
         """Return the next deferred call, for compatibility with older code."""
         return self._defers[-1] if self._defers else None
 
     @property
-    def pending_deferrals(self):
+    def pending_deferrals(self) -> int:
         """Return the number of calls waiting to be resumed."""
         with self._slots_lock:
             return len(self._defers)
 
-    def priority_higher(self, *args, boost=1):
+    def priority_higher(
+        self, *args: Slot[Any], boost: int = 1
+    ) -> int:
         """Return a priority value above the slots specified in the
         arguments.
 
@@ -216,18 +238,17 @@ class Signal(metaclass=_SignalMeta):
             Boost the priority by this amount.
 
         """
-        if not args:
-            args = self.slots
-
-        attr = attrgetter("priority")
+        slots: Iterable[Slot[Any]] = args or self.slots
         if self.prio_descend:
             # Lower numbers = higher priority
-            return attr(min(args, key=attr)) - boost
+            return min(slots, key=lambda slot: slot.priority).priority - boost
 
         # Higher numbers = higher priority
-        return attr(max(args, key=attr)) + boost
+        return max(slots, key=lambda slot: slot.priority).priority + boost
 
-    def priority_lower(self, *args, boost=1):
+    def priority_lower(
+        self, *args: Slot[Any], boost: int = 1
+    ) -> int:
         """Return a priority value below the slots specified in the
         arguments.
 
@@ -237,18 +258,17 @@ class Signal(metaclass=_SignalMeta):
             Boost the priority by this amount.
 
         """
-        if not args:
-            args = self.slots
-
-        attr = attrgetter("priority")
+        slots: Iterable[Slot[Any]] = args or self.slots
         if self.prio_descend:
             # Higher numbers = lower priority
-            return attr(max(args, key=attr)) + boost
+            return max(slots, key=lambda slot: slot.priority).priority + boost
 
         # Lower numbers = lower priority
-        return attr(min(args, key=attr)) - boost
+        return min(slots, key=lambda slot: slot.priority).priority - boost
 
-    def find_function(self, function):
+    def find_function(
+        self, function: Callback[ResultT]
+    ) -> list[Slot[CallbackResult[ResultT]]]:
         """Find the given :py:class:`~taillight.slot.Slot` instance(s), given
         a function.
 
@@ -258,7 +278,7 @@ class Signal(metaclass=_SignalMeta):
         If a slot with the given function is not found, then a
         :py:class:`~taillight.slot.SlotNotFoundError` is raised.
         """
-        ret = []
+        ret: list[Slot[CallbackResult[ResultT]]] = []
         with self._slots_lock:
             for slot in self.slots:
                 if slot.function is function:
@@ -269,7 +289,7 @@ class Signal(metaclass=_SignalMeta):
 
         raise SlotNotFoundError(f"Function not found: {repr(function)}")
 
-    def find_uid(self, uid):
+    def find_uid(self, uid: int) -> Slot[CallbackResult[ResultT]]:
         """Find the given :py:class:`~taillight.slot.Slot` instance(s), given
         a uid.
 
@@ -286,7 +306,9 @@ class Signal(metaclass=_SignalMeta):
 
         raise SlotNotFoundError(f"Signal UID not found: {uid}")
 
-    def find_listener(self, listener):
+    def find_listener(
+        self, listener: object
+    ) -> list[Slot[CallbackResult[ResultT]]]:
         """Find the given :py:class:`~taillight.slot.Slot` instance(s) that
         are listening on the given listener.
 
@@ -295,7 +317,7 @@ class Signal(metaclass=_SignalMeta):
         If a slot with the given function is not found, then a
         :py:class:`~taillight.slot.SlotNotFoundError` is raised.
         """
-        ret = []
+        ret: list[Slot[CallbackResult[ResultT]]] = []
         with self._slots_lock:
             for slot in self.slots:
                 if slot.listener is listener:
@@ -306,11 +328,34 @@ class Signal(metaclass=_SignalMeta):
 
         raise SlotNotFoundError(f"Listener not found: {repr(listener)}")
 
-    def __contains__(self, slot):
+    def __contains__(self, slot: object) -> bool:
         return slot in self.slots
 
-    def add(self, function=None, priority=SignalPriority.PRIORITY_NORMAL,
-            listener=ANY):
+    @overload
+    def add(
+        self,
+        function: Callback[ResultT],
+        priority: int = SignalPriority.PRIORITY_NORMAL,
+        listener: object = ANY,
+    ) -> Slot[CallbackResult[ResultT]]: ...
+
+    @overload
+    def add(
+        self,
+        function: None = None,
+        priority: int = SignalPriority.PRIORITY_NORMAL,
+        listener: object = ANY,
+    ) -> Callable[[Callback[ResultT]], Slot[CallbackResult[ResultT]]]: ...
+
+    def add(
+        self,
+        function: Callback[ResultT] | None = None,
+        priority: int = SignalPriority.PRIORITY_NORMAL,
+        listener: object = ANY,
+    ) -> (
+        Slot[CallbackResult[ResultT]]
+        | Callable[[Callback[ResultT]], Slot[CallbackResult[ResultT]]]
+    ):
         """Add a given slot function to the signal with a given priority.
 
         :param function:
@@ -335,7 +380,8 @@ class Signal(metaclass=_SignalMeta):
             uid = self._uid
             self._uid += 1
 
-        slot = Slot(self, priority, uid, function, listener)
+        slot: Slot[CallbackResult[ResultT]] = Slot(
+            self, priority, uid, function, listener)
 
         with self._slots_lock:
             if self._defers:
@@ -347,7 +393,11 @@ class Signal(metaclass=_SignalMeta):
 
         return slot
 
-    def add_wraps(self, priority=SignalPriority.PRIORITY_NORMAL, listener=ANY):
+    def add_wraps(
+        self,
+        priority: int = SignalPriority.PRIORITY_NORMAL,
+        listener: object = ANY,
+    ) -> Callable[[Callback[ResultT]], Slot[CallbackResult[ResultT]]]:
         """Similar to :py:meth:`~taillight.signal.Signal.add`, but
         is for use as a decorator.
 
@@ -364,12 +414,18 @@ class Signal(metaclass=_SignalMeta):
             A :py:class:`~taillight.slot.Slot` object that can be used to
             delete the slot later.
         """
-        def decorator(function):
+        def decorator(
+            function: Callback[ResultT],
+        ) -> Slot[CallbackResult[ResultT]]:
             return self.add(function, priority, listener)
 
         return decorator
 
-    def delete(self, target):
+    def delete(
+        self,
+        target: Slot[CallbackResult[ResultT]]
+        | Iterable[Slot[CallbackResult[ResultT]]],
+    ) -> None:
         """Delete a slot from the signal.
 
         :param target:
@@ -394,7 +450,7 @@ class Signal(metaclass=_SignalMeta):
                 target_type = type(target).__name__
                 raise TypeError(f"Expected Slot or Iterable, got {target_type}")
 
-    def delete_function(self, function):
+    def delete_function(self, function: Callback[ResultT]) -> None:
         """Delete a function from the signal.
 
         This will delete every slot that contains this signal.
@@ -406,7 +462,7 @@ class Signal(metaclass=_SignalMeta):
         with self._slots_lock:
             self.delete(self.find_function(function))
 
-    def delete_uid(self, uid):
+    def delete_uid(self, uid: int) -> None:
         """Delete the slot with the given UID from the signal.
 
         :param uid:
@@ -426,7 +482,7 @@ class Signal(metaclass=_SignalMeta):
 
         raise SlotNotFoundError(f"Signal UID not found: {uid}")
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear the slot of all signals."""
         with self._slots_lock:
             if self._defers:
@@ -434,18 +490,20 @@ class Signal(metaclass=_SignalMeta):
                     "Cannot clear due to deferral point being set")
             self.slots.clear()
 
-    def reset_defer(self):
+    def reset_defer(self) -> None:
         """Discard the next deferred call, if one exists."""
         with self._slots_lock:
             if self._defers:
                 self._defers.pop()
 
-    def reset_defers(self):
+    def reset_defers(self) -> None:
         """Discard all deferred calls."""
         with self._slots_lock:
             self._defers.clear()
 
-    def reset_call(self, sender, *args, **kwargs):
+    def reset_call(
+        self, sender: object, *args: Any, **kwargs: Any
+    ) -> list[CallbackResult[ResultT]]:
         """Call the signal, running all the slots, but reset the deferred
         status before running the functions.
 
@@ -470,7 +528,9 @@ class Signal(metaclass=_SignalMeta):
             self.reset_defers()
             return self.call(sender, *args, **kwargs)
 
-    def yield_slots(self, sender):
+    def yield_slots(
+        self, sender: object
+    ) -> Iterator[Slot[CallbackResult[ResultT]]]:
         """Yield slots from the slots list.
 
         This is useful for advanced usage;
@@ -486,7 +546,11 @@ class Signal(metaclass=_SignalMeta):
                 if slot.listener is ANY or sender == slot.listener:
                     yield slot
 
-    def defer_set_args(self, args=None, kwargs=None):
+    def defer_set_args(
+        self,
+        args: tuple[Any, ...] | None = None,
+        kwargs: dict[str, Any] | None = None,
+    ) -> None:
         """Set the arguments when the signal is deferred. If both arguments
         are None, the arguments are unset.
 
@@ -500,7 +564,7 @@ class Signal(metaclass=_SignalMeta):
 
         with self._slots_lock:
             if not self._defers:
-                return
+                return None
 
             deferred = self._defers[-1]
             if args is None:
@@ -509,10 +573,12 @@ class Signal(metaclass=_SignalMeta):
             if kwargs is None:
                 kwargs = deferred.kwargs
 
-            self._defers[-1] = deferred._replace(args=args, kwargs=kwargs)
+            self._defers[-1] = replace(deferred, args=args, kwargs=kwargs)
 
     # pylint: disable=inconsistent-return-statements
-    def resume(self, sender=None):
+    def resume(
+        self, sender: object | None = None
+    ) -> list[CallbackResult[ResultT]] | None:
         """Resume a deferred call.
 
         If the signal is not in a deferred state, this returns None; else it
@@ -528,19 +594,21 @@ class Signal(metaclass=_SignalMeta):
         """
         with self._slots_lock:
             if not self._defers:
-                return
+                return None
 
             deferred = self._take_deferred(sender)
 
         return self._run(deferred, resumed=True)
 
-    def _new_call(self, sender, args, kwargs):
+    def _new_call(
+        self, sender: object, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> _DeferredCall[ResultT]:
         """Create an isolated frame for a new signal invocation."""
         with self._slots_lock:
             slots = iter(tuple(self.yield_slots(sender)))
-        return self._DeferType(slots, sender, args, kwargs)
+        return _DeferredCall(slots, sender, args, kwargs)
 
-    def _take_deferred(self, sender):
+    def _take_deferred(self, sender: object | None) -> _DeferredCall[ResultT]:
         """Remove and return the next deferred frame after validating it."""
         deferred = self._defers[-1]
         if sender is not None and sender != deferred.sender:
@@ -548,9 +616,11 @@ class Signal(metaclass=_SignalMeta):
                 "deferred signal sender unexpectedly changed")
         return self._defers.pop()
 
-    def _run(self, deferred, resumed=False):
+    def _run(
+        self, deferred: _DeferredCall[ResultT], resumed: bool = False
+    ) -> list[CallbackResult[ResultT]]:
         """Run a synchronous invocation frame until completion or deferral."""
-        ret = []
+        ret: list[CallbackResult[ResultT]] = []
         self.last_status = SignalStatus.STATUS_DONE
 
         for slot in deferred.iterator:
@@ -573,7 +643,9 @@ class Signal(metaclass=_SignalMeta):
 
         return ret
 
-    def call(self, sender, *args, **kwargs):
+    def call(
+        self, sender: object, *args: Any, **kwargs: Any
+    ) -> list[CallbackResult[ResultT]]:
         """Call the signal's slots.
 
         All arguments and keywords are passed to the slots when run. This
@@ -597,7 +669,9 @@ class Signal(metaclass=_SignalMeta):
         """
         return self._run(self._new_call(sender, args, kwargs))
 
-    async def call_async(self, sender, *args, **kwargs):
+    async def call_async(
+        self, sender: object, *args: Any, **kwargs: Any
+    ) -> list[ResultT]:
         """Call the signal's slots asynchronously.
 
         Awaitable return values are awaited; other return values are collected
@@ -624,9 +698,11 @@ class Signal(metaclass=_SignalMeta):
 
         return await self._run_async(self._new_call(sender, args, kwargs))
 
-    async def _run_async(self, deferred, resumed=False):
+    async def _run_async(
+        self, deferred: _DeferredCall[ResultT], resumed: bool = False
+    ) -> list[ResultT]:
         """Run an asynchronous frame until completion or deferral."""
-        ret = []
+        ret: list[ResultT] = []
         self.last_status = SignalStatus.STATUS_DONE
 
         for slot in deferred.iterator:
@@ -635,7 +711,7 @@ class Signal(metaclass=_SignalMeta):
                     deferred.sender, *deferred.args, **deferred.kwargs)
                 if isawaitable(result):
                     result = await result
-                ret.append(result)
+                ret.append(cast(ResultT, result))
             except SignalStop:
                 self.last_status = SignalStatus.STATUS_STOP
                 break
@@ -653,7 +729,9 @@ class Signal(metaclass=_SignalMeta):
         return ret
 
     # pylint: disable=inconsistent-return-statements
-    async def resume_async(self, sender=None):
+    async def resume_async(
+        self, sender: object | None = None
+    ) -> list[ResultT] | None:
         """Resume a deferred asynchronous call.
 
         If the signal is not in a deferred state, this returns None; else
@@ -664,23 +742,23 @@ class Signal(metaclass=_SignalMeta):
         """
         with self._slots_lock:
             if not self._defers:
-                return
+                return None
 
             deferred = self._take_deferred(sender)
 
         return await self._run_async(deferred, resumed=True)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.slots)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"Signal(name={self.name}, prio_descend={self.prio_descend}, "
             f"slots={self.slots})"
         )
 
 
-class StrongSignal(Signal):
+class StrongSignal(Signal[ResultT]):
     """Like a :py:class:`~taillight.signal.Signal`, but strong references are
     kept to the signals (so you don't have to keep a reference around).
 
@@ -691,10 +769,10 @@ class StrongSignal(Signal):
 
     # Use separate locks than above...
     _sigcreate_lock = Lock()  # Locking for the below dict
-    _signals = dict()
+    _signals: Any = {}
 
     @classmethod
-    def delete_signal(cls, signal):
+    def delete_signal(cls, signal: Hashable) -> None:
         """Delete a signal.
 
         This function is needed, as strong references are kept around
@@ -718,14 +796,14 @@ class StrongSignal(Signal):
                 raise SignalNotFoundError(
                     f"Signal not found: {signal}") from error
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"StrongSignal(name={self.name}, prio_descend={self.prio_descend}, "
             f"slots={self.slots})"
         )
 
 
-class UnsharedSignal(Signal):
+class UnsharedSignal(Signal[ResultT]):
     """Like a :py:class:`~taillight.signal.Signal`, but multiple calls with
     the same name do not return the same signal.
 
@@ -735,7 +813,7 @@ class UnsharedSignal(Signal):
 
     _share_by_name = False
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"UnsharedSignal(name={self.name}, prio_descend={self.prio_descend}, "
             f"slots={self.slots})"

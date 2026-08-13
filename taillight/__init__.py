@@ -8,6 +8,7 @@ the base exception for all taillight errors (for easier catching by handlers),
 and aliases for two important classes: :py:class:`~taillight.signal.Signal`,
 and :py:class:`~taillight.slot.Slot`."""
 
+from __future__ import annotations
 
 # pylint: disable=cyclic-import, wrong-import-position,invalid-name
 
@@ -22,21 +23,21 @@ class TaillightException(Exception):
 class _AnyObject:
     __slots__ = []
 
-    def __eq__(self, _):
+    def __eq__(self, _: object) -> bool:
         return True
 
-    def __ne__(self, _):
+    def __ne__(self, _: object) -> bool:
         return False
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         # Supposed to be a singleton, so this is fine.
         return id(ANY)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<ANY>"
 
 
-ANY = _AnyObject()
+ANY: _AnyObject = _AnyObject()
 """The predicate for signalling any slot."""
 
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "taillight"
-version = "0.6.1"
+version = "0.7.0"
 description = "A lightweight, thread-safe signals and slots library with priorities."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -33,10 +33,18 @@ Issues = "https://github.com/Elizafox/taillight/issues"
 Repository = "https://github.com/Elizafox/taillight"
 
 [project.optional-dependencies]
-dev = ["build>=1.2", "ruff>=0.12", "sphinx>=8.1", "tox>=4.20", "twine>=6.1"]
+dev = ["build>=1.2", "mypy>=1.17", "ruff>=0.12", "sphinx>=8.1", "tox>=4.20", "twine>=6.1"]
 
 [tool.setuptools.packages.find]
 include = ["taillight*"]
+
+[tool.setuptools.package-data]
+taillight = ["py.typed"]
+
+[tool.mypy]
+files = ["taillight"]
+python_version = "3.10"
+strict = true
 
 [tool.ruff]
 line-length = 88
