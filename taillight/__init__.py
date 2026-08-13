@@ -12,7 +12,7 @@ and :py:class:`~taillight.slot.Slot`."""
 # pylint: disable=cyclic-import, wrong-import-position,invalid-name
 
 
-__all__ = ["signal", "slot"]
+__all__ = ["ANY", "Signal", "Slot", "TaillightException", "signal", "slot"]
 
 
 class TaillightException(Exception):

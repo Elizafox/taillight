@@ -1,6 +1,6 @@
 # taillight
 
-[![Build Status](https://travis-ci.org/Elizafox/taillight.svg?branch=master)](https://travis-ci.org/Elizafox/taillight)
+[![CI](https://github.com/Elizafox/taillight/actions/workflows/ci.yml/badge.svg)](https://github.com/Elizafox/taillight/actions/workflows/ci.yml)
 [![Downloads per month](https://img.shields.io/pypi/dm/taillight.svg)](https://pypi.org/project/taillight/)
 [![Python versions](https://img.shields.io/pypi/pyversions/taillight.svg)](https://pypi.org/project/taillight/)
 [![PyPI version](https://img.shields.io/pypi/v/taillight.svg)](https://pypi.org/project/taillight/)
@@ -14,8 +14,8 @@ use mutexes. It should be safe to use Signal instances across threads.
 
 ## Support
 
-We can be reached easily at irc.interlinked.me #foxkit.us to answer any
-questions you may have.
+Questions, bug reports, and feature requests are welcome in the
+[issue tracker](https://github.com/Elizafox/taillight/issues).
 
 Pull requests and patches are always welcomed. Features can be requested via
 the bug tracker.
@@ -27,5 +27,5 @@ Copyright © 2013-2026 A. Wilcox and Elizabeth Myers. All rights reserved.
 This work is licensed either under the WTFPL or LPRAB, at your option (the two
 licenses are equivalent). Terms and conditions can be found at:
 
-        http://www.wtfpl.net/about/
-        http://sam.zoy.org/lprab/
+        https://www.wtfpl.net/about/
+        https://sam.zoy.org/lprab/

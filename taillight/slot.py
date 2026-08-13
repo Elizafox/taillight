@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright © 2017-2026 Elizabeth Ashford. All rights reserved.
 # This file is part of the taillight project. See LICENSE in the root
 # directory for licensing information.
@@ -66,8 +65,10 @@ class Slot:
                      self.listener))
 
     def __repr__(self):
-        return "Slot(priority={}, uid={}, function={}, listener={})".format(
-            self.priority, self.uid, self.function, self.listener)
+        return (
+            f"Slot(priority={self.priority}, uid={self.uid}, "
+            f"function={self.function}, listener={self.listener})"
+        )
 
     def __lt__(self, other):
         return (self.priority, self.uid) < (other.priority, other.uid)

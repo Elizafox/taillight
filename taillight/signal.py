@@ -1,14 +1,13 @@
-# -*- coding: utf-8 -*-
 # Copyright © 2017-2026 Elizabeth Ashford. All rights reserved.
 # This file is part of the taillight project. See LICENSE in the root
 # directory for licensing information.
 
 "This module contains the Signal class and exceptions related to signals."
 
-from enum import Enum, IntEnum
 from bisect import insort_right
 from collections import deque, namedtuple
 from collections.abc import Iterable
+from enum import Enum, IntEnum
 from inspect import isawaitable
 from operator import attrgetter
 from threading import Lock, RLock
@@ -16,7 +15,6 @@ from weakref import WeakValueDictionary
 
 from taillight import ANY, TaillightException
 from taillight.slot import Slot, SlotNotFoundError
-
 
 # pylint: disable=invalid-name
 _SlotType = deque
@@ -178,9 +176,11 @@ class Signal:
         """
         with Signal._siginit_lock:
             # __new__ will result in the __init__ method being called, so
-            # ensure we're not completely reset.
-            if not hasattr(self, "slots"):
-                self.slots = _SlotType()
+            # ensure an existing named signal is not reset.
+            if hasattr(self, "slots"):
+                return
+
+            self.slots = _SlotType()
 
         if name is None:
             name = "<anonymous>"
@@ -258,8 +258,7 @@ class Signal:
         if ret:
             return ret
 
-        raise SlotNotFoundError("Function not found: {}".format(
-            repr(function)))
+        raise SlotNotFoundError(f"Function not found: {repr(function)}")
 
     def find_uid(self, uid):
         """Find the given :py:class:`~taillight.slot.Slot` instance(s), given
@@ -276,7 +275,7 @@ class Signal:
                 if slot.uid == uid:
                     return slot
 
-        raise SlotNotFoundError("Signal UID not found: {}".format(uid))
+        raise SlotNotFoundError(f"Signal UID not found: {uid}")
 
     def find_listener(self, listener):
         """Find the given :py:class:`~taillight.slot.Slot` instance(s) that
@@ -296,8 +295,7 @@ class Signal:
         if ret:
             return ret
 
-        raise SlotNotFoundError("Listener not found: {}".format(
-            repr(listener)))
+        raise SlotNotFoundError(f"Listener not found: {repr(listener)}")
 
     def __contains__(self, slot):
         return slot in self.slots
@@ -380,13 +378,12 @@ class Signal:
             elif isinstance(target, Iterable):
                 for slot in target:
                     if not isinstance(slot, Slot):
-                        raise TypeError("Expected Slot, got {}".format(
-                            type(slot).__name__))
+                        raise TypeError(f"Expected Slot, got {type(slot).__name__}")
 
                     self.delete(slot)
             else:
-                raise TypeError("Expected Slot or Iterable, got {}".format(
-                    type(target).__name__))
+                target_type = type(target).__name__
+                raise TypeError(f"Expected Slot or Iterable, got {target_type}")
 
     def delete_function(self, function):
         """Delete a function from the signal.
@@ -418,7 +415,7 @@ class Signal:
                     del self.slots[i]
                     return
 
-        raise SlotNotFoundError("Signal UID not found: {}".format(uid))
+        raise SlotNotFoundError(f"Signal UID not found: {uid}")
 
     def clear(self):
         """Clear the slot of all signals."""
@@ -674,8 +671,10 @@ class Signal:
         return len(self.slots)
 
     def __repr__(self):
-        return "Signal(name={}, prio_descend={}, slots={})".format(
-            self.name, self.prio_descend, self.slots)
+        return (
+            f"Signal(name={self.name}, prio_descend={self.prio_descend}, "
+            f"slots={self.slots})"
+        )
 
 
 class StrongSignal(Signal):
@@ -712,12 +711,15 @@ class StrongSignal(Signal):
         """
         try:
             del cls._signals[signal]
-        except ValueError:
-            raise SignalNotFoundError("Signal not found: {}".format(signal))
+        except KeyError as error:
+            raise SignalNotFoundError(
+                f"Signal not found: {signal}") from error
 
     def __repr__(self):
-        return "StrongSignal(name={}, prio_descend={}, slots={})".format(
-            self.name, self.prio_descend, self.slots)
+        return (
+            f"StrongSignal(name={self.name}, prio_descend={self.prio_descend}, "
+            f"slots={self.slots})"
+        )
 
 
 class UnsharedSignal(Signal):
@@ -734,5 +736,7 @@ class UnsharedSignal(Signal):
         return object.__new__(cls)
 
     def __repr__(self):
-        return "UnsharedSignal(name={}, prio_descend={}, slots={})".format(
-            self.name, self.prio_descend, self.slots)
+        return (
+            f"UnsharedSignal(name={self.name}, prio_descend={self.prio_descend}, "
+            f"slots={self.slots})"
+        )

@@ -52,7 +52,11 @@ coverage.xml
 *.log
 
 # Sphinx documentation
-docs/_build/
+doc/_build/
+
+# Modern Python tooling
+.ruff_cache/
+.venv/
 
 # PyBuilder
 target/

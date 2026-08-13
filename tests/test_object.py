@@ -31,6 +31,21 @@ class TestSignalObject(unittest.TestCase):
         self.assertSequenceEqual(signal_a_slots, signal_a2.slots,
                                  signal._SlotType)
 
+    def test_singleton_does_not_reuse_uids(self):
+        signal_a = signal.Signal("uid")
+        first = signal_a.add(lambda sender: None)
+
+        signal_a2 = signal.Signal("uid")
+        second = signal_a2.add(lambda sender: None)
+
+        self.assertGreater(second.uid, first.uid)
+
+    def test_singleton_keeps_priority_order(self):
+        signal_a = signal.Signal("priority", prio_descend=False)
+        signal_a2 = signal.Signal("priority")
+
+        self.assertFalse(signal_a2.prio_descend)
+
     def test_unshared(self):
         signal_a = signal.UnsharedSignal("a")
         signal_b = signal.UnsharedSignal("b")
@@ -59,6 +74,10 @@ class TestSignalObject(unittest.TestCase):
 
         # Clean up
         signal_a.delete_signal("a")
+
+    def test_delete_missing_strong_signal(self):
+        with self.assertRaises(signal.SignalNotFoundError):
+            signal.StrongSignal.delete_signal("missing")
 
     def test_anonymous_signal(self):
         signal_anon1 = signal.Signal()
